@@ -31,7 +31,7 @@
             {% for record in consultations %}
                 <div class="feature-card">
                     <h3>🗂 Consultation Record</h3>
-                    <p><strong>Date:</strong> {{ record.appointment.created_at|date:"F d, Y" }}</p>
+                    <p><strong>Date:</strong> {{ record.appointment.slot.date|date:"F d, Y" }}</p>
                     <p><strong>Diagnosis:</strong> {{ record.diagnosis }}</p>
 
                     <div style="margin-top:15px;">

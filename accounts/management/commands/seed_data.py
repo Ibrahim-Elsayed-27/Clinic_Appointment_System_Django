@@ -8,6 +8,7 @@ from appointments.models import Appointment
 from medical_records.models import ConsultationRecord
 from scheduling.models import DoctorSchedule, Slot
 
+from datetime import time, timedelta, datetime
 
 User = get_user_model()
 
@@ -18,7 +19,7 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         self.stdout.write(self.style.WARNING("Seeding database..."))
 
-        # Clear existing data (users cascade-delete related objects)
+        # Clear existing data
         User.objects.all().delete()
 
         users = [
@@ -50,7 +51,7 @@ class Command(BaseCommand):
                 "role": "D",
             },
 
-            # Receptionists
+            # Receptionist
             {
                 "username": "rec_yassin",
                 "email": "yassin@mediflow.com",
@@ -79,9 +80,9 @@ class Command(BaseCommand):
             },
         ]
 
-        # --- Create users ---
         created_users = {}
 
+        # ---------- Create Users ----------
         for user_data in users:
             password = user_data.pop("password")
 
@@ -94,17 +95,13 @@ class Command(BaseCommand):
                     last_name=user_data["last_name"],
                     role="A",
                 )
+
                 group, _ = Group.objects.get_or_create(name="Admin")
                 user.groups.add(group)
                 user.save()
+
                 created_users[user.username] = user
-                group_names = list(user.groups.values_list("name", flat=True))
-                primary_group = group_names[0] if group_names else None
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"Created user: {user.username} (group: {primary_group})"
-                    )
-                )
+                self.stdout.write(self.style.SUCCESS(f"Created admin: {user.username}"))
                 continue
 
             form_data = {
@@ -125,51 +122,39 @@ class Command(BaseCommand):
             if form.is_valid():
                 user = form.save()
                 created_users[user.username] = user
-                group_names = list(user.groups.values_list("name", flat=True))
-                primary_group = group_names[0] if group_names else None
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        f"Created user: {user.username} (group: {primary_group})"
-                    )
-                )
+                self.stdout.write(self.style.SUCCESS(f"Created user: {user.username}"))
             else:
                 self.stdout.write(
-                    self.style.ERROR(
-                        f"Failed to create {user_data.get('username')}: {form.errors}"
-                    )
+                    self.style.ERROR(f"Failed to create {user_data.get('username')}: {form.errors}")
                 )
-
-        # --- Create simple schedules, slots, appointments, and consultation records ---
-        from datetime import time, timedelta, datetime
 
         today = timezone.localdate()
         weekday = today.weekday()
 
         doctor_usernames = ["dr_mustafa", "dr_yasser"]
-        patient_usernames = ["pat_bassant", "pat_ibrahim"]
 
-        # Helper to create a 30-minute slot
+        # ---------- Helper to create slot ----------
         def create_slot(schedule, date, start_hour, start_minute, reserved=False):
             start = time(start_hour, start_minute)
             end_dt = datetime.combine(date, start) + timedelta(minutes=30)
             end = end_dt.time()
-            slot = Slot.objects.create(
+
+            return Slot.objects.create(
                 doctor_schedule=schedule,
                 date=date,
                 start_time=start,
                 end_time=end,
                 is_available=not reserved,
             )
-            return slot
 
         appointments = []
 
+        # ---------- Standard demo appointments ----------
         for idx, doc_username in enumerate(doctor_usernames):
-            doctor = created_users.get(doc_username)
-            if not doctor:
-                continue
 
-            # 9–11 schedule for today
+            doctor = created_users.get(doc_username)
+            patient = created_users.get("pat_bassant")
+
             schedule = DoctorSchedule.objects.create(
                 doctor=doctor,
                 day_of_week=weekday,
@@ -177,22 +162,15 @@ class Command(BaseCommand):
                 end_time=time(11, 0),
             )
 
-            # Two reserved slots for appointments
             slot1 = create_slot(schedule, today, 9, 0, reserved=True)
             slot2 = create_slot(schedule, today, 9, 30, reserved=True)
 
-            patient = created_users.get(patient_usernames[idx % len(patient_usernames)])
-            if not patient:
-                continue
-
-            # One completed appointment with a consultation record
             appt_completed = Appointment.objects.create(
                 patient=patient,
                 doctor=doctor,
                 slot=slot1,
                 status="COMPLETED",
             )
-            appointments.append(appt_completed)
 
             ConsultationRecord.objects.create(
                 appointment=appt_completed,
@@ -202,19 +180,91 @@ class Command(BaseCommand):
                 requested_tests="Blood test, X-ray.",
             )
 
-            # One confirmed appointment without a consultation record yet
             appt_confirmed = Appointment.objects.create(
                 patient=patient,
                 doctor=doctor,
                 slot=slot2,
                 status="CONFIRMED",
             )
-            appointments.append(appt_confirmed)
+
+            appointments.extend([appt_completed, appt_confirmed])
+
+        # ---------- Historical appointments for pat_ibrahim ----------
+        history_patient = created_users.get("pat_ibrahim")
+        past_date = today - timedelta(days=5)
+
+        for doc_username in doctor_usernames:
+
+            doctor = created_users.get(doc_username)
+
+            schedule = DoctorSchedule.objects.create(
+                doctor=doctor,
+                day_of_week=past_date.weekday(),
+                start_time=time(10, 0),
+                end_time=time(12, 0),
+            )
+
+            slot = Slot.objects.create(
+                doctor_schedule=schedule,
+                date=past_date,
+                start_time=time(10, 0),
+                end_time=time(10, 30),
+                is_available=False,
+            )
+
+            past_appt = Appointment.objects.create(
+                patient=history_patient,
+                doctor=doctor,
+                slot=slot,
+                status="COMPLETED",
+            )
+
+            ConsultationRecord.objects.create(
+                appointment=past_appt,
+                diagnosis="Previous consultation diagnosis",
+                notes="Routine medical check.",
+                prescription="Pain reliever",
+                requested_tests="None",
+            )
+
+            appointments.append(past_appt)
+
+        # ---------- Today's completed appointment WITHOUT consultation ----------
+        doctor_today = created_users.get("dr_mustafa")
+
+        schedule_today = DoctorSchedule.objects.create(
+            doctor=doctor_today,
+            day_of_week=weekday,
+            start_time=time(12, 0),
+            end_time=time(13, 0),
+        )
+
+        slot_today = Slot.objects.create(
+            doctor_schedule=schedule_today,
+            date=today,
+            start_time=time(12, 0),
+            end_time=time(12, 30),
+            is_available=False,
+        )
+
+        appt_today = Appointment.objects.create(
+            patient=history_patient,
+            doctor=doctor_today,
+            slot=slot_today,
+            status="COMPLETED",
+        )
+
+        appointments.append(appt_today)
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Created {len(appointments)} demo appointments with matching consultation records for completed ones."
+                "Created past consultations for pat_ibrahim with both doctors "
+                "and a completed appointment today WITHOUT consultation record."
             )
+        )
+
+        self.stdout.write(
+            self.style.SUCCESS(f"Created {len(appointments)} appointments in total.")
         )
 
         self.stdout.write(self.style.SUCCESS("Seeding completed!"))

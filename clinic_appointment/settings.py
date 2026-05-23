@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-(^m3qh4p2*=d=@5k%*b856&-fi-ge0zpv9i=6stmy_y)*2(7g7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -124,11 +124,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 import os
 
-STATIC_URL = '/static/'
-
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    BASE_DIR / 'static',
 ]
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') 
+
 
 TEMPLATES[0]['DIRS'] = [os.path.join(BASE_DIR, 'templates')]
 
@@ -139,3 +140,10 @@ LOGOUT_REDIRECT_URL = 'home'
 
 MEDIA_URL = '/media/' 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
+
+
+
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8090']
+
+USE_X_FORWARDED_HOST = True
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'http')

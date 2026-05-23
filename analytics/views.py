@@ -7,6 +7,7 @@ from django.db.models import Count
 from django.db.models.functions import ExtractHour
 from appointments.models import Appointment
 from scheduling.models import Slot
+from django.shortcuts import redirect
 
 
 class AdminAnalytics(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
@@ -17,7 +18,6 @@ class AdminAnalytics(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         return self.request.user.role == 'A'
 
     def handle_no_permission(self):
-        from django.shortcuts import redirect
         return redirect('home')
 
     def get_context_data(self, **kwargs):

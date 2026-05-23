@@ -1,17 +1,47 @@
 services:
   db:
-    image: postgres
-    ports:
-      - ${DB_PORT}:5432
-    container_name: postgres
+    image: postgres:16-alpine
+    container_name: clinic_db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
-      - postgres-vol:/var/lib/postgresql
+      - postgres-vol:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      retries: 5
 
+  web:
+    build: .
+    container_name: clinic_web
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - static-vol:/app/staticfiles
+      - media-vol:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: clinic_nginx
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - static-vol:/app/staticfiles:ro
+      - media-vol:/app/media:ro
+    depends_on:
+      - web
 
 volumes:
   postgres-vol:
-  
+  static-vol:
+  media-vol:
