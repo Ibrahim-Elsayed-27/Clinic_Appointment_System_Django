@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from .models import Appointment
-from scheduling.models import Slot
+from app.scheduling.models import Slot
 
 
 class AppointmentCreateForm(forms.ModelForm):

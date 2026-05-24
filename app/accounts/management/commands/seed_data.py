@@ -3,10 +3,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.utils import timezone
 
-from accounts.forms import StaffRegistrationForm, PatientRegistrationForm
-from appointments.models import Appointment
-from medical_records.models import ConsultationRecord
-from scheduling.models import DoctorSchedule, Slot
+from app.accounts.forms import StaffRegistrationForm, PatientRegistrationForm
+from app.appointments.models import Appointment
+from app.medical_records.models import ConsultationRecord
+from app.scheduling.models import DoctorSchedule, Slot
 
 from datetime import time, timedelta, datetime
 

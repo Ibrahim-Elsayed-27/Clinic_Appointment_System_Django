@@ -9,14 +9,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.core.exceptions import PermissionDenied, ValidationError
 from .models import Appointment, Slot, AppointmentRescheduleHistory
-from medical_records.models import ConsultationRecord
+from app.medical_records.models import ConsultationRecord
 from django.db.models import Q
 from django.contrib.auth.decorators import user_passes_test
-from scheduling.models import DoctorSchedule
-from scheduling.services import generate_slots_for_schedule
+from app.scheduling.models import DoctorSchedule
+from app.scheduling.services import generate_slots_for_schedule
 from django.core.paginator import Paginator
 from django.contrib.auth import get_user_model
-from accounts.models import User
+from app.accounts.models import User
 
 
 def handle_errors(view_func):

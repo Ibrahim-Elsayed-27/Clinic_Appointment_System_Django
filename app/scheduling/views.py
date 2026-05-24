@@ -6,7 +6,7 @@ from .models import Slot
 from .models import DoctorSchedule, DoctorScheduleException
 from .forms import DoctorScheduleForm
 from .services import generate_slots_for_schedule
-from appointments.views import handle_errors
+from app.appointments.views import handle_errors
 
 
 @login_required

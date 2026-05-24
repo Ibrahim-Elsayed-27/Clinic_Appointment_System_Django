@@ -5,8 +5,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count
 from django.db.models.functions import ExtractHour
-from appointments.models import Appointment
-from scheduling.models import Slot
+from app.appointments.models import Appointment
+from app.scheduling.models import Slot
 from django.shortcuts import redirect
 
 
