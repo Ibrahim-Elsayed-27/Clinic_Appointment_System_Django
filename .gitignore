@@ -25,3 +25,12 @@ media/
 
 # But keep the __init__.py in migrations folders
 !**/migrations/__init__.py
+
+# Terraform local and generated files
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.backup
+**/*.tfvars
+**/*.tfvars.json
+**/.terraform.lock.hcl
+**/crash.log
