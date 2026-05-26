@@ -74,6 +74,11 @@ variable "db_identifier" {
   default     = "clinic-db"
 }
 
+variable "db_family" {
+  type    = string
+  default = "postgres16"
+}
+
 variable "db_engine" {
   description = "RDS database engine"
   type        = string
@@ -121,9 +126,9 @@ variable "db_multi_az" {
   type        = bool
   default     = false
 }
-
 variable "db_security_group_id" {
   description = "Security group ID for RDS (required when enable_rds is true)"
   type        = string
   default     = ""
 }
+
