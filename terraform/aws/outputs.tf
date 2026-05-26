@@ -44,6 +44,11 @@ output "db_master_user_secret_arn" {
 }
 
 
+output "cluster_name" {
+  description = "EKS cluster name"
+  value       = module.eks.cluster_name
+}
+
 output "eks_endpoint" {
   description = "EKS endpoint"
   value       = module.eks.cluster_endpoint
@@ -57,5 +62,5 @@ output "eks_ca_data" {
 
 output "jenkins_instance_id" {
   description = "ID of the created Jenkins instance"
-  value       = aws_instance.jenkins[0].id
+  value       = aws_instance.jenkins.id
 }

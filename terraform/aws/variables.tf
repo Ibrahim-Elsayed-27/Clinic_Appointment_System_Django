@@ -62,6 +62,31 @@ variable "single_nat_gateway" {
   type        = bool
   default     = false
 }
+
+variable "node_instance_type" {
+  description = "EKS managed node group instance type"
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "node_min_size" {
+  description = "EKS managed node group minimum size"
+  type        = number
+  default     = 1
+}
+
+variable "node_max_size" {
+  description = "EKS managed node group maximum size"
+  type        = number
+  default     = 2
+}
+
+variable "node_desired_size" {
+  description = "EKS managed node group desired size"
+  type        = number
+  default     = 1
+}
+
 variable "enable_rds" {
   description = "Create RDS instance (requires db_security_group_id)"
   type        = bool
@@ -126,9 +151,3 @@ variable "db_multi_az" {
   type        = bool
   default     = false
 }
-variable "db_security_group_id" {
-  description = "Security group ID for RDS (required when enable_rds is true)"
-  type        = string
-  default     = ""
-}
-
