@@ -151,3 +151,15 @@ variable "db_multi_az" {
   type        = bool
   default     = false
 }
+
+variable "jenkins_secret_arns" {
+  description = "Secrets Manager ARNs Jenkins is allowed to read"
+  type        = list(string)
+  default     = ["*"]
+}
+
+variable "enable_private_api_endpoints" {
+  description = "Create interface VPC endpoints so private resources can reach AWS APIs without NAT"
+  type        = bool
+  default     = true
+}
