@@ -64,3 +64,8 @@ output "jenkins_instance_id" {
   description = "ID of the created Jenkins instance"
   value       = aws_instance.jenkins.id
 }
+
+output "alb_controller_irsa_role_arn" {
+  description = "IRSA role ARN to annotate aws-load-balancer-controller service account"
+  value       = var.enable_alb_controller_irsa ? module.alb_controller_irsa_role[0].iam_role_arn : null
+}

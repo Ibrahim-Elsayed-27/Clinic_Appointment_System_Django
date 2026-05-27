@@ -163,3 +163,22 @@ variable "enable_private_api_endpoints" {
   type        = bool
   default     = true
 }
+
+variable "enable_alb_controller_irsa" {
+  description = "Create IRSA IAM role for AWS Load Balancer Controller (required for ALB Ingress)"
+  type        = bool
+  default     = true
+}
+
+
+variable "enable_eks_endpoint_public_access" {
+  description = "Enable public access to EKS endpoints"
+  type        = bool
+  default     = false
+}
+
+variable "enable_eks_bootstrap_cluster_creator_admin_permissions" {
+  description = "Grant cluster creator admin permissions at bootstrap time for EKS access entries"
+  type        = bool
+  default     = false
+}

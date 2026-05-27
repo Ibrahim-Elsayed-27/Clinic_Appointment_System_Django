@@ -5,8 +5,9 @@ module "eks" {
 
   name               = "${var.environment}-clinic-cluster"
   kubernetes_version = "1.33"
+  enable_cluster_creator_admin_permissions = var.enable_eks_bootstrap_cluster_creator_admin_permissions
 
-  endpoint_public_access = true
+  endpoint_public_access = var.enable_eks_endpoint_public_access
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
@@ -18,9 +19,6 @@ module "eks" {
       max_size       = var.node_max_size
       desired_size   = var.node_desired_size
 
-      iam_role_additional_policies = {
-        ecr_read = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-      }
     }
   }
 

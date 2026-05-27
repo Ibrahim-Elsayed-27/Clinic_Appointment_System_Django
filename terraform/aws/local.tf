@@ -1,8 +1,7 @@
 locals {
   tags = {
-    Project     = "clinic-appointment"
-    Environment = var.environment
-    ManagedBy   = "terraform"
-    CreatedBy   = "terraform"
+    Project   = "clinic-appointment"
+    ManagedBy = "terraform"
+    CreatedBy = "terraform"
   }
 }

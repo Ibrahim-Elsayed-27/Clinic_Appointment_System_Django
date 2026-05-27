@@ -27,8 +27,8 @@ resource "aws_iam_role_policy_attachment" "jenkins_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-resource "aws_iam_role_policy" "jenkins_secrets_eks" {
-  name = "${local.tags.Project}-jenkins-secrets-eks-policy"
+resource "aws_iam_role_policy" "jenkins_ci_access" {
+  name = "${local.tags.Project}-jenkins-ci-access-policy"
   role = aws_iam_role.jenkins.id
 
   policy = jsonencode({
@@ -50,6 +50,29 @@ resource "aws_iam_role_policy" "jenkins_secrets_eks" {
           "eks:ListClusters"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:BatchGetImage",
+          "ecr:CompleteLayerUpload",
+          "ecr:DescribeImages",
+          "ecr:DescribeRepositories",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:InitiateLayerUpload",
+          "ecr:ListImages",
+          "ecr:PutImage",
+          "ecr:UploadLayerPart"
+        ]
+        Resource = "arn:aws:ecr:${var.aws_region}:*:repository/*"
       }
     ]
   })
