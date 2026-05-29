@@ -170,6 +170,11 @@ variable "enable_alb_controller_irsa" {
   default     = true
 }
 
+variable "create_ecr" {
+  description = "Create ECR"
+  type        = bool
+  default     = false
+}
 
 variable "enable_eks_endpoint_public_access" {
   description = "Enable public access to EKS endpoints"
@@ -181,4 +186,17 @@ variable "enable_eks_bootstrap_cluster_creator_admin_permissions" {
   description = "Grant cluster creator admin permissions at bootstrap time for EKS access entries"
   type        = bool
   default     = false
+}
+
+
+variable "bastion_allowed_cidrs" {
+  description = "List of CIDRs allowed to SSH to bastion"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "bastion_key_name" {
+  description = "EC2 key pair name for bastion SSH access"
+  type        = string
+  default     = "bastion-key"
 }

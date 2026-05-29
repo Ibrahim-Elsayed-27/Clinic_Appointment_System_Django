@@ -69,3 +69,9 @@ output "alb_controller_irsa_role_arn" {
   description = "IRSA role ARN to annotate aws-load-balancer-controller service account"
   value       = var.enable_alb_controller_irsa ? module.alb_controller_irsa_role[0].iam_role_arn : null
 }
+
+
+output "bastion_private_key" {
+  value     = tls_private_key.bastion.private_key_pem
+  sensitive = true
+}

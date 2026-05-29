@@ -34,3 +34,4 @@ media/
 **/*.tfvars.json
 **/.terraform.lock.hcl
 **/crash.log
+**/*plan.txt

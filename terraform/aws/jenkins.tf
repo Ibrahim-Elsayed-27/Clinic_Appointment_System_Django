@@ -1,7 +1,4 @@
 # ── Jenkins ────────────────────────────────────────────────────
-data "aws_ssm_parameter" "jenkins_ami" {
-  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
-}
 
 resource "aws_iam_role" "jenkins" {
   name = "${local.tags.Project}-jenkins-role"
@@ -10,11 +7,9 @@ resource "aws_iam_role" "jenkins" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
+        Effect    = "Allow"
+        Principal = { Service = "ec2.amazonaws.com" }
+        Action    = "sts:AssumeRole"
       }
     ]
   })
@@ -44,18 +39,13 @@ resource "aws_iam_role_policy" "jenkins_ci_access" {
         Resource = var.jenkins_secret_arns
       },
       {
-        Effect = "Allow"
-        Action = [
-          "eks:DescribeCluster",
-          "eks:ListClusters"
-        ]
+        Effect   = "Allow"
+        Action   = ["eks:DescribeCluster", "eks:ListClusters"]
         Resource = "*"
       },
       {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken"
-        ]
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
         Resource = "*"
       },
       {
@@ -87,6 +77,14 @@ resource "aws_security_group" "jenkins" {
   name        = "${local.tags.Project}-jenkins-sg"
   description = "Jenkins — SSM Session Manager only"
   vpc_id      = module.vpc.vpc_id
+
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.bastion.id]
+    description     = "Jenkins UI from bastion only"
+  }
 
   egress {
     from_port   = 0
@@ -141,7 +139,7 @@ resource "aws_vpc_endpoint" "private_api" {
 }
 
 resource "aws_instance" "jenkins" {
-  ami                    = data.aws_ssm_parameter.jenkins_ami.value
+  ami                    = data.aws_ami.al2023.id
   instance_type          = "t3.medium"
   subnet_id              = module.vpc.private_subnets[0]
   vpc_security_group_ids = [aws_security_group.jenkins.id]
@@ -154,3 +152,5 @@ resource "aws_instance" "jenkins" {
 
   tags = merge(local.tags, { Name = "${local.tags.Project}-jenkins" })
 }
+
+
