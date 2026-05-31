@@ -2,7 +2,7 @@
 
 resource "aws_security_group" "bastion" {
   name        = "${local.tags.Project}-bastion-sg"
-  description = "Bastion — SSH from trusted IPs only"
+  description = "Bastion - SSH from trusted IPs only"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
