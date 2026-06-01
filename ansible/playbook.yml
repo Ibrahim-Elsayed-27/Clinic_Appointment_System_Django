@@ -1,0 +1,12 @@
+---
+- name: Configure clinic appointment infrastructure host
+  hosts: all
+  become: true
+  roles:
+    - java
+    - docker
+    - kubectl
+    - helm
+    - awscli
+    - jenkins
+
