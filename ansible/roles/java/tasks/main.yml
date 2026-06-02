@@ -1,3 +1,4 @@
----
-# Tasks for installing and configuring Java.
-
+- name: Install Java 17
+  dnf:
+    name: java-17-amazon-corretto
+    state: present
