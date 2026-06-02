@@ -1,3 +1,16 @@
----
-# Tasks for installing and configuring Docker.
+- name: Install Docker
+  dnf:
+    name: docker
+    state: present
 
+- name: Start and enable Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add jenkins user to docker group
+  user:
+    name: jenkins
+    groups: docker
+    append: yes
