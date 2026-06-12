@@ -1,2 +1,4 @@
----
-# Common variables for all hosts.
+aws_region: "us-east-1"
+eks_cluster_name: "{{ lookup('env', 'EKS_CLUSTER_NAME') }}"
+eks_endpoint: "{{ lookup('env', 'EKS_ENDPOINT') }}"
+jenkins_private_ip: "{{ lookup('env', 'JENKINS_IP') }}"

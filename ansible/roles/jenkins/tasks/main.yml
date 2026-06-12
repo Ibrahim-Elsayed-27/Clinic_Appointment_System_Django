@@ -1,3 +1,105 @@
----
-# Tasks for installing and configuring Jenkins.
+- name: Add Jenkins repo
+  get_url:
+    url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    dest: /etc/yum.repos.d/jenkins.repo
 
+- name: Import Jenkins GPG key
+  rpm_key:
+    key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+    state: present
+
+- name: Install Jenkins
+  dnf:
+    name: jenkins
+    state: present
+
+- name: Start and enable Jenkins
+  systemd:
+    name: jenkins
+    state: started
+    enabled: yes
+
+- name: Wait for Jenkins to start
+  wait_for:
+    port: 8080
+    delay: 10
+    timeout: 120
+
+- name: Get Jenkins initial admin password
+  slurp:
+    src: /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_password
+
+- name: Print initial admin password
+  debug:
+    msg: "Jenkins initial password: {{ jenkins_password.content | b64decode }}"
+
+- name: Install Jenkins plugins
+  jenkins_plugin:
+    name: "{{ item }}"
+    url: http://localhost:8080
+    url_username: admin
+    url_password: "{{ jenkins_password.content | b64decode }}"
+    state: present
+  loop: "{{ lookup('ansible.builtin.file', 'files/plugins.txt').splitlines() }}"
+
+- name: Restart Jenkins after plugin install
+  systemd:
+    name: jenkins
+    state: restarted
+
+- name: Wait for Jenkins to restart
+  wait_for:
+    port: 8080
+    delay: 15
+    timeout: 120
+
+- name: Create Jenkins namespace in EKS
+  become_user: jenkins
+  command: kubectl create namespace jenkins --dry-run=client -o yaml | kubectl apply -f -
+  environment:
+    HOME: /var/lib/jenkins
+
+- name: Create Jenkins service account in EKS
+  become_user: jenkins
+  command: |
+    kubectl apply -f - <<EOF
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: jenkins-agent
+      namespace: jenkins
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: jenkins-agent-admin
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: cluster-admin
+    subjects:
+    - kind: ServiceAccount
+      name: jenkins-agent
+      namespace: jenkins
+    EOF
+  environment:
+    HOME: /var/lib/jenkins
+
+- name: Configure Kubernetes cloud in Jenkins via JCasC
+  template:
+    src: kubernetes-cloud.yaml.j2
+    dest: /var/lib/jenkins/casc_configs/kubernetes.yaml
+    owner: jenkins
+    group: jenkins
+
+- name: Set JCasC config path in Jenkins
+  lineinfile:
+    path: /etc/sysconfig/jenkins
+    line: 'JAVA_OPTS="-Djenkins.model.Jenkins.crumbIssuerProxyCompatibility=true -Dcasc.jenkins.config=/var/lib/jenkins/casc_configs"'
+    create: yes
+
+- name: Restart Jenkins to apply JCasC
+  systemd:
+    name: jenkins
+    state: restarted

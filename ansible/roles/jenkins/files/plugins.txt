@@ -1,2 +1,9 @@
-# Jenkins plugins to install, one per line.
-
+configuration-as-code
+kubernetes
+aws-credentials
+aws-secrets-manager-credentials-provider
+git
+workflow-aggregator
+blueocean
+docker-workflow
+pipeline-stage-view
