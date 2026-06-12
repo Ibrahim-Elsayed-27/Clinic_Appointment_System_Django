@@ -86,6 +86,14 @@ resource "aws_security_group" "jenkins" {
     description     = "Jenkins UI from bastion only"
   }
 
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.bastion.id]
+    description     = "SSH from bastion"
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -107,13 +115,7 @@ resource "aws_security_group" "private_api_endpoints" {
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr_block]
   }
-  ingress {
-    from_port       = 22
-    to_port         = 22
-    protocol        = "tcp"
-    security_groups = [aws_security_group.bastion.id]
-    description     = "SSH from bastion"
-  }
+
 
   egress {
     from_port   = 0
@@ -151,6 +153,7 @@ resource "aws_instance" "jenkins" {
   subnet_id              = module.vpc.private_subnets[0]
   vpc_security_group_ids = [aws_security_group.jenkins.id]
   iam_instance_profile   = aws_iam_instance_profile.jenkins.name
+  key_name               = aws_key_pair.bastion.key_name
 
   root_block_device {
     volume_size           = 30
