@@ -4,7 +4,7 @@ module "eks" {
   version = "~> 21.0"
 
   name                                     = "${var.environment}-clinic-cluster"
-  kubernetes_version                       = "1.33"
+  kubernetes_version                       = "1.36"
   enable_cluster_creator_admin_permissions = var.enable_eks_bootstrap_cluster_creator_admin_permissions
 
   endpoint_public_access  = var.enable_eks_endpoint_public_access
