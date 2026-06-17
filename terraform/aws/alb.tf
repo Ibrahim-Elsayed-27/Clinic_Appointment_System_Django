@@ -1,11 +1,11 @@
-# ── ALB for Kubernetes Ingress (AWS Load Balancer Controller) ──
 module "alb_controller_irsa_role" {
-  count = var.enable_alb_controller_irsa ? 1 : 0
 
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.0"
+  count   = var.enable_alb_controller_irsa ? 1 : 0
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.0"
 
-  role_name                              = "${var.environment}-alb-controller-irsa"
+  name = "${var.environment}-alb-controller-irsa"
+
   attach_load_balancer_controller_policy = true
 
   oidc_providers = {
@@ -14,6 +14,4 @@ module "alb_controller_irsa_role" {
       namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
     }
   }
-
-  tags = local.tags
 }
