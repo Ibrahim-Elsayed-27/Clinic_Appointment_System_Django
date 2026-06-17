@@ -1,3 +1,29 @@
----
-# Tasks for installing and configuring kubectl.
+- name: Get latest kubectl version
+  uri:
+    url: https://dl.k8s.io/release/stable.txt
+    return_content: yes
+  register: kubectl_stable
 
+- name: Install kubectl
+  get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_stable.content | trim }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: "0755"
+
+- name: Create .kube directory for jenkins user
+  file:
+    path: /var/lib/jenkins/.kube
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: "0755"
+
+- name: Configure kubeconfig for Jenkins
+  shell: aws eks update-kubeconfig --name {{ eks_cluster_name }} --region {{ aws_region }} --kubeconfig /var/lib/jenkins/.kube/config
+
+- name: Set kubeconfig ownership
+  file:
+    path: /var/lib/jenkins/.kube/config
+    owner: jenkins
+    group: jenkins
+    mode: "0600"
