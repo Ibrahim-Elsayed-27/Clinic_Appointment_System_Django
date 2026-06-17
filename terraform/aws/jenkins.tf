@@ -104,48 +104,8 @@ resource "aws_security_group" "jenkins" {
   tags = local.tags
 }
 
-resource "aws_security_group" "private_api_endpoints" {
-  name        = "${local.tags.Project}-private-api-endpoints-sg"
-  description = "Allow HTTPS from VPC resources to interface endpoints"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr_block]
-  }
 
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = local.tags
-}
-
-resource "aws_vpc_endpoint" "private_api" {
-  for_each = var.enable_private_api_endpoints ? toset([
-    "secretsmanager",
-    "ssm",
-    "ssmmessages",
-    "ec2messages",
-    "sts",
-    "eks"
-  ]) : toset([])
-
-  vpc_id              = module.vpc.vpc_id
-  service_name        = "com.amazonaws.${var.aws_region}.${each.key}"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  subnet_ids          = module.vpc.private_subnets
-  security_group_ids  = [aws_security_group.private_api_endpoints.id]
-
-  tags = merge(local.tags, { Name = "${local.tags.Project}-${each.key}-vpce" })
-}
 
 resource "aws_instance" "jenkins" {
   ami                    = data.aws_ami.al2023.id
