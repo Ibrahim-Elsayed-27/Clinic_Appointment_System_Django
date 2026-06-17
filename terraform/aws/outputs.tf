@@ -65,9 +65,14 @@ output "jenkins_instance_id" {
   value       = aws_instance.jenkins.id
 }
 
+output "jenkins_private_ip" {
+  description = "Private IP of the created Jenkins instance"
+  value       = aws_instance.jenkins.private_ip
+}
+
 output "alb_controller_irsa_role_arn" {
   description = "IRSA role ARN to annotate aws-load-balancer-controller service account"
-  value       = var.enable_alb_controller_irsa ? module.alb_controller_irsa_role[0].iam_role_arn : null
+  value       = var.enable_alb_controller_irsa ? module.alb_controller_irsa_role[0].arn : null
 }
 
 
@@ -75,3 +80,11 @@ output "bastion_private_key" {
   value     = tls_private_key.bastion.private_key_pem
   sensitive = true
 }
+
+
+output "bastion_public_ip" {
+  description = "Public IP of the created Bastion instance"
+  value       = aws_instance.bastion.public_ip
+}
+
+
