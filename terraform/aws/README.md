@@ -6,14 +6,15 @@ This folder contains Terraform configurations that provision the AWS infrastruct
 
 - Purpose: Create a reproducible AWS environment used by the application (networking, compute, container registry, database, CI components, and load-balancing).
 - Main components:
-  - VPC, subnets, routing: defined in [vpc.tf](vpc.tf)
+  - VPC, subnets, NAT routing, and optional private API endpoints: defined in [vpc.tf](vpc.tf)
   - EKS (Kubernetes) cluster: defined in [eks.tf](eks.tf)
   - ECR (container registry): defined in [ecr.tf](ecr.tf)
   - Application images and related resources: [images.tf](images.tf)
-  - Application Load Balancer and routing: [alb.tf](alb.tf)
+  - AWS Load Balancer Controller IRSA role: [alb.tf](alb.tf)
   - RDS (Postgres) database: [rds.tf](rds.tf)
   - Jenkins infrastructure: [jenkins.tf](jenkins.tf)
   - Bastion host: [bastion.tf](bastion.tf)
+  - Outputs for access and automation: [outputs.tf](outputs.tf)
   - Provider and backend definitions: [provider.tf](provider.tf), [backend.tf](backend.tf)
   - Variables and environment tfvars: [variables.tf](variables.tf)
 
@@ -41,6 +42,8 @@ For the full architecture reference, including diagrams and component-level deta
 4. ALB exposes services running in EKS to the internet.
 5. RDS hosts the application database (Postgres).
 6. Jenkins (optional) can run CI/CD and is provisioned with its own resources if enabled.
+7. Private subnets use NAT for outbound internet/AWS API access; private VPC endpoints are available in the VPC configuration but disabled by default to reduce cost and operational complexity.
+8. Jenkins receives EKS admin access through an EKS access entry and connects to the private EKS API endpoint from inside the VPC.
 
 ## Prerequisites
 
@@ -70,7 +73,17 @@ terraform plan -var-file="local.tfvars"
 terraform apply -var-file="local.tfvars"
 ```
 
-5. After EKS is created, configure `kubectl` to use the new cluster (the EKS module may output kubeconfig details in `outputs.tf`).
+5. After EKS is created, use the Terraform outputs for automation and access details:
+
+```bash
+terraform output cluster_name
+terraform output eks_endpoint
+terraform output jenkins_private_ip
+terraform output bastion_public_ip
+terraform output -raw bastion_private_key
+```
+
+6. Run the Ansible playbook to configure Jenkins when the Jenkins instance is reachable through the bastion/private network. The playbook installs Java 21, AWS CLI v2, Helm, latest stable `kubectl`, Jenkins plugins, and JCasC Kubernetes cloud configuration.
 
 ## State and Backends
 
@@ -84,6 +97,8 @@ terraform apply -var-file="local.tfvars"
 ## Notes & Tips
 
 - Review `outputs.tf` to see useful values to interact with created resources (EKS cluster endpoint, ALB DNS, RDS endpoint, etc.).
+- The EC2 key pair name is fixed as `bastion-key`; Terraform generates the private key and exposes it as the sensitive `bastion_private_key` output.
+- NAT is enabled by default. Private API endpoints require both `enable_private_api_endpoints = true` and the relevant `enable_endpoint_* = true` flags.
 - If you plan to destroy resources, be cautious with `terraform destroy` as it will remove data (RDS) and networking components.
 - For CI/CD, confirm IAM roles/policies used by Jenkins or automation systems have least privilege required.
 
@@ -99,4 +114,4 @@ terraform apply -var-file="local.tfvars"
 
 ---
 
-Generated on: 2026-06-11
+Generated on: 2026-06-17

@@ -31,8 +31,8 @@
 │  │  │ │ ├─ Dev: PostgreSQL on K8s StatefulSet │   │  │  │
 │  │  │ │ └─ Prod: AWS RDS PostgreSQL 16        │   │  │  │
 │  │  │ └────────────────────────────────────────┘   │  │  │
-│  │  │ NAT Gateway (optional)                        │  │  │
-│  │  │ VPC Endpoints (optional)                      │  │  │
+│  │  │ NAT Gateway (private outbound access)          │  │  │
+│  │  │ VPC Endpoints (optional, disabled by default)  │  │  │
 │  │  └──────────────────────────────────────────────┘   │  │
 │  └──────────────────────────────────────────────────────┘  │
 │                                                             │
@@ -62,7 +62,7 @@ VPC: clinic-vpc (10.0.0.0/16)
 │
 └── Availability Zone: us-east-1b
     ├── Public Subnet: 10.0.2.0/24 (clinic-appointment-public-us-east-1b)
-    │   └── Resources: NAT Gateway (optional, single-AZ config)
+    │   └── Resources: NAT Gateway only when multi-NAT is enabled
     └── Private Subnet: 10.0.12.0/24 (clinic-appointment-private-us-east-1b)
         └── Resources: EKS Nodes, RDS
 ```
@@ -78,10 +78,10 @@ VPC: clinic-vpc (10.0.0.0/16)
 
 #### Private Subnets (10.0.11.0/24, 10.0.12.0/24)
 
-- **Route to**: NAT Gateway (if enabled) or local only
+- **Route to**: NAT Gateway for outbound internet and AWS API access
 - **Public IP**: No automatic assignment
 - **Hosts**: Jenkins (CI/CD), EKS Worker Nodes, RDS Database
-- **Connectivity**: AWS service endpoints via VPC endpoints
+- **Connectivity**: Outbound access through NAT; optional VPC endpoints can be enabled for selected AWS services
 - **Kubernetes Tags**: Internal ELB role (for AWS Load Balancer Controller)
 
 ### Network Flow
@@ -97,9 +97,17 @@ Bastion Host (SSH/SSM Gateway)
    ↓
 Private Subnets (Jenkins, EKS Nodes, RDS)
    ↓
-NAT Gateway (optional - for outbound internet)
+NAT Gateway (default private outbound path)
    ↓
-VPC Endpoints (optional - for AWS services)
+AWS Services / Internet
+```
+
+Optional VPC endpoints are part of the VPC networking layer and can be enabled for private AWS service access, but they are disabled by default to avoid additional endpoint hourly costs and extra operational complexity.
+
+```
+Private Subnets
+   ↓
+VPC Endpoints (optional, disabled by default)
    ↓
 AWS Services (S3, ECR, Secrets Manager, etc.)
 ```
@@ -165,8 +173,8 @@ Egress:
 ```
 Cluster: dev-clinic-cluster (or prod-clinic-cluster)
 ├── Control Plane
-│   ├── Kubernetes Version: 1.36
-│   ├── Endpoint: Private
+│   ├── Kubernetes Version: 1.33
+│   ├── Endpoint: Private, public access disabled by default
 │   ├── Certificate Authority: AWS managed
 │   └── Status: Managed by AWS
 │
@@ -177,6 +185,7 @@ Cluster: dev-clinic-cluster (or prod-clinic-cluster)
 │   ├── Desired Nodes: 2 (dev), configurable
 │   ├── Launch Type: On-Demand
 │   ├── AMI: Amazon Linux 2023
+│   ├── Key Pair: bastion-key
 │   └── Networking: Private subnets, multi-AZ
 │
 ├── Node Security Group
@@ -184,7 +193,8 @@ Cluster: dev-clinic-cluster (or prod-clinic-cluster)
 │   └── Managed by AWS EKS
 │
 ├── Access Entries (IAM)
-│   └── Jenkins Role: Administrator access to cluster
+│   ├── Jenkins Role: Administrator access to cluster
+│   └── Cluster Creator: Bootstrap admin access when enabled
 │
 └── Add-ons (auto-managed)
     ├── vpc-cni: Pod networking
@@ -278,7 +288,8 @@ Repository Name: clinic-appointment
 
 - Jenkins: Full ECR permissions
 - EKS Nodes: Pull images via IAM role
-- VPC Endpoints: Private registry access (optional)
+- NAT Gateway: Default outbound path for ECR access from private subnets
+- VPC Endpoints: Optional private registry access, disabled by default
 
 ## 🚀 CI/CD Architecture (Jenkins)
 
@@ -290,7 +301,7 @@ Repository Name: clinic-appointment
 │ Instance Type: t3.small                       │
 │ AMI: Amazon Linux 2023                        │
 │ Subnet: Private (10.0.11.0/24)               │
-│ Key Pair: clinic-appointment-bastion-key      │
+│ Key Pair: bastion-key                         │
 │                                                │
 │ ┌──────────────────────────────────────────┐  │
 │ │ Jenkins Server                           │  │
@@ -336,6 +347,17 @@ Policies:
 3. **Jenkins UI**: SSH tunnel through Bastion to port 8080, then access via localhost:8080
 4. **Direct AWS SSM**: Jenkins has AmazonSSMManagedInstanceCore policy but still in private subnet
 
+### Jenkins Provisioning (Ansible)
+
+The Ansible playbook prepares Jenkins after Terraform creates the instance:
+
+- Installs Java 21, AWS CLI v2, Helm, and the latest stable `kubectl`
+- Creates `/var/lib/jenkins/.kube/config` with `aws eks update-kubeconfig`
+- Installs Jenkins plugins listed in `ansible/roles/jenkins/files/plugins.txt`
+- Writes Jenkins Configuration as Code to `/var/lib/jenkins/casc_configs/kubernetes.yaml`
+- Configures the Jenkins service with `-Dcasc.jenkins.config=/var/lib/jenkins/casc_configs`
+- Creates the `jenkins` namespace, `jenkins-agent` service account, and cluster-admin binding in EKS
+
 ## 🔐 IAM Architecture
 
 ### Service Roles
@@ -377,18 +399,26 @@ Purpose: Allow pods to manage ALB/NLB resources
 
 ### Optional Private Endpoints
 
-When `enable_private_api_endpoints: true`:
+Private API endpoints are part of the VPC networking layer and controlled by `enable_private_api_endpoints`. The project disables them by default and relies on NAT for private subnet egress to keep cost and complexity lower.
+
+Endpoint creation uses a two-level switch. `enable_private_api_endpoints = true` enables the VPC endpoints module, then each endpoint is controlled independently by its matching `enable_endpoint_*` variable.
+
+For example, `enable_private_api_endpoints = true` and `enable_endpoint_ecr_api = true` creates the ECR API endpoint. If either flag is `false`, that endpoint is not created.
+
+Available endpoints:
 
 ```
 Private Subnets
     ↓
 VPC Endpoints (Interface Type)
     ├── EC2
+    ├── ECR API
+    ├── ECR Docker
     ├── EKS
     ├── STS (Security Token Service)
-    ├── STS Messages
     ├── Systems Manager (SSM)
     ├── SSM Messages
+    ├── EC2 Messages
     ├── SecretsManager
     │
     └── S3 (Gateway Type)
@@ -398,8 +428,13 @@ VPC Endpoints (Interface Type)
 
 - No internet access needed for private resources
 - Enhanced security (no data leaves VPC)
-- Reduced NAT gateway costs
 - Dedicated network bandwidth
+
+**Trade-offs:**
+
+- Additional hourly cost for each interface endpoint
+- More networking resources and security group rules to operate
+- NAT remains simpler for this project unless stricter private AWS API access is required
 
 **Route Configuration:**
 
@@ -418,7 +453,7 @@ Public IP: Yes (via IGW)
 Session Manager: Available
 SSH Access: Via key pair
 
-Key Pair: clinic-appointment-bastion-key
+Key Pair: bastion-key
 ├── Private Key: Generated by Terraform (show via tf output)
 ├── Public Key: Stored in EC2 Key Pairs
 └── Algorithm: RSA 4096-bit
@@ -507,10 +542,10 @@ tags {
 ## 🔗 Inter-Component Communication
 
 ```
-Jenkins ──HTTP──> Kubernetes API (via IAM)
-Jenkins ──HTTP──> ECR (API endpoint)
+Jenkins ──HTTPS──> Kubernetes API (via IAM and EKS access entry)
+Jenkins ──HTTPS──> ECR (via NAT by default, optional VPC endpoints)
 EKS Nodes ──TCP:5432──> RDS / PostgreSQL StatefulSet
-EKS Nodes ──PULL──> ECR (Docker images)
+EKS Nodes ──HTTPS/PULL──> ECR (Docker images via NAT by default)
 ALB Control Plane ──API──> EKS (manage load balancers)
 Bastion ──SSH──> Jenkins, EKS Nodes (via SSM or direct SSH)
 ```

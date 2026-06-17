@@ -134,11 +134,12 @@ This document provides a comprehensive reference for all Terraform variables use
 #### `create_nat_gateway`
 
 - **Type**: `bool`
-- **Default**: `false`
+- **Default**: `true`
 - **Description**: Whether to create NAT Gateway(s) for private subnets
 - **Costs**: ~$32/month per NAT gateway + data processing charges
-- **Use When**: Private resources need internet access (pull images, updates)
-- **Alternative**: Use VPC endpoints instead
+- **Use When**: Private resources need outbound internet or AWS API access (pull images, updates, package downloads)
+- **Project Usage**: Enabled in `common.tfvars` so Jenkins and EKS nodes can reach AWS services and the internet from private subnets
+- **Alternative**: Optional VPC endpoints can be enabled for selected AWS APIs, but they are disabled by default to reduce cost and complexity
 - **Example**:
   ```hcl
   create_nat_gateway = true
@@ -240,11 +241,12 @@ This document provides a comprehensive reference for all Terraform variables use
 - **Default**: `false`
 - **Description**: Grant cluster creator admin permissions at bootstrap
 - **IAM**: Using new EKS Access Entries feature (replaces aws-auth ConfigMap)
+- **Project Usage**: `common.tfvars` sets this to `true` so the cluster creator keeps admin access during bootstrap
 - **Use When**: You want cluster creator to automatically have admin role
-- **Recommendation**: Let Terraform manage access, set to `false`
+- **Recommendation**: Use `true` during initial setup if the creator needs immediate admin access; set `false` when all access is managed through explicit EKS access entries
 - **Example**:
   ```hcl
-  enable_eks_bootstrap_cluster_creator_admin_permissions = false
+  enable_eks_bootstrap_cluster_creator_admin_permissions = true
   ```
 
 ---
@@ -451,20 +453,48 @@ This document provides a comprehensive reference for all Terraform variables use
 #### `enable_private_api_endpoints`
 
 - **Type**: `bool`
-- **Default**: `true`
-- **Description**: Create VPC Interface endpoints for AWS services
-- **Endpoints Created**: S3, ECR, EKS, STS, SSM, Secrets Manager
+- **Default**: `false`
+- **Description**: Global switch for optional VPC endpoints inside the VPC
+- **Endpoint Selection**: This must be `true` and the matching `enable_endpoint_*` flag must also be `true` before an endpoint is created
+- **Available Endpoints**: S3 gateway endpoint plus interface endpoints for ECR API, ECR Docker, EC2, EKS, STS, SSM, SSM Messages, EC2 Messages, and Secrets Manager
 - **Benefits**:
   - Data stays in VPC (enhanced security)
-  - No NAT gateway needed (cost savings)
   - Lower latency to AWS services
-- **Costs**: ~$0.01 per endpoint-hour (~$7.20/month per endpoint)
-- **Total Cost**: ~$50/month for 6 endpoints
-- **Alternative**: NAT gateway ($32/month + data transfer)
-- **Recommendation**: Depends on security requirements vs. cost
+- **Costs**: Interface endpoints have hourly and data processing costs per endpoint and AZ
+- **Project Usage**: Disabled by default; private subnets use NAT for outbound access
+- **Recommendation**: Keep `false` unless stricter private AWS API access is required
 - **Example**:
   ```hcl
   enable_private_api_endpoints = true
+  enable_endpoint_s3          = true
+  enable_endpoint_ecr_api     = true
+  enable_endpoint_ecr_dkr     = true
+  ```
+
+#### Per-Endpoint Toggles
+
+- **Type**: `bool`
+- **Default**: `false` for each endpoint
+- **Description**: Enable individual VPC endpoints after the global `enable_private_api_endpoints` flag is enabled
+- **Variables**:
+  - `enable_endpoint_s3`
+  - `enable_endpoint_ecr_api`
+  - `enable_endpoint_ecr_dkr`
+  - `enable_endpoint_ec2`
+  - `enable_endpoint_sts`
+  - `enable_endpoint_eks`
+  - `enable_endpoint_secretsmanager`
+  - `enable_endpoint_ssm`
+  - `enable_endpoint_ssmmessages`
+  - `enable_endpoint_ec2messages`
+- **Example**:
+  ```hcl
+  enable_private_api_endpoints = true
+  enable_endpoint_s3           = true
+  enable_endpoint_sts          = true
+  enable_endpoint_ssm          = true
+  enable_endpoint_ssmmessages  = true
+  enable_endpoint_ec2messages  = true
   ```
 
 #### `enable_alb_controller_irsa`
@@ -503,17 +533,12 @@ This document provides a comprehensive reference for all Terraform variables use
   ]
   ```
 
-#### `bastion_key_name`
+### Bastion Key Pair
 
-- **Type**: `string`
-- **Default**: `"bastion-key"`
-- **Description**: Name of EC2 key pair for bastion SSH access
-- **Note**: Terraform auto-generates key but doesn't store it
-- **Retrieval**: Use `terraform output bastion_private_key` (if custom output)
-- **Example**:
-  ```hcl
-  bastion_key_name = "clinic-bastion-production"
-  ```
+- **Key Pair Name**: `bastion-key`
+- **Description**: Terraform generates one RSA 4096-bit key pair and uses it for both the bastion host and EKS managed nodes
+- **Jenkins Usage**: Jenkins also uses this key pair because the instance is reachable only through the bastion security group
+- **Retrieval**: Use `terraform output -raw bastion_private_key` and store it securely outside the repository
 
 ---
 
@@ -534,7 +559,7 @@ create_ecr = true
 node_instance_type = "t3.small"
 node_min_size      = 1
 node_max_size      = 2
-node_desired_size  = 1
+node_desired_size  = 2
 
 # Security: More permissive for development
 enable_eks_endpoint_public_access = false
@@ -567,7 +592,7 @@ node_desired_size  = 2
 # Security: Restrictive for production
 enable_eks_endpoint_public_access = false
 bastion_allowed_cidrs = ["203.0.113.0/32"]  # Your IP
-enable_private_api_endpoints = true
+enable_private_api_endpoints = false
 ```
 
 ### Common Configuration (common.tfvars)
@@ -584,8 +609,8 @@ public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
 private_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24"]
 
 create_igw              = true
-create_nat_gateway      = false
-single_nat_gateway      = false
+create_nat_gateway      = true
+single_nat_gateway      = true
 map_public_ip_on_launch = true
 
 # Jenkins
@@ -597,7 +622,7 @@ enable_alb_controller_irsa   = true
 
 # EKS Access
 enable_eks_endpoint_public_access                      = false
-enable_eks_bootstrap_cluster_creator_admin_permissions = false
+enable_eks_bootstrap_cluster_creator_admin_permissions = true
 ```
 
 ---
@@ -647,8 +672,10 @@ enable_eks_bootstrap_cluster_creator_admin_permissions = false
 | db_instance_class            | str  | db.t3.micro | N/A         | db.t3.micro |
 | db_multi_az                  | bool | false       | N/A         | false       |
 | create_ecr                   | bool | false       | true        | true        |
-| enable_private_api_endpoints | bool | true        | false       | true        |
+| enable_private_api_endpoints | bool | false       | false       | false       |
 | enable_alb_controller_irsa   | bool | true        | true        | true        |
+| create_nat_gateway           | bool | true        | true        | true        |
+| single_nat_gateway           | bool | false       | true        | false       |
 
 ---
 
