@@ -54,7 +54,7 @@ variable "create_igw" {
 variable "create_nat_gateway" {
   description = "Whether the VPC should create a NAT Gateway for private subnets"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "single_nat_gateway" {
@@ -161,7 +161,7 @@ variable "jenkins_secret_arns" {
 variable "enable_private_api_endpoints" {
   description = "Create interface VPC endpoints so private resources can reach AWS APIs without NAT"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "enable_alb_controller_irsa" {
@@ -195,8 +195,64 @@ variable "bastion_allowed_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "bastion_key_name" {
-  description = "EC2 key pair name for bastion SSH access"
-  type        = string
-  default     = "bastion-key"
+
+# Per-endpoint toggles (allow enabling each VPC endpoint independently)
+variable "enable_endpoint_s3" {
+  description = "Enable S3 VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_ecr_api" {
+  description = "Enable ECR API VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_ecr_dkr" {
+  description = "Enable ECR DKR VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_ec2" {
+  description = "Enable EC2 VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_sts" {
+  description = "Enable STS VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_eks" {
+  description = "Enable EKS VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_secretsmanager" {
+  description = "Enable Secrets Manager VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_ssm" {
+  description = "Enable SSM VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_ssmmessages" {
+  description = "Enable SSM Messages VPC endpoint"
+  type        = bool
+  default     = false
+}
+
+variable "enable_endpoint_ec2messages" {
+  description = "Enable EC2 Messages VPC endpoint"
+  type        = bool
+  default     = false
 }
