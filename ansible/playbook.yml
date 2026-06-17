@@ -9,4 +9,4 @@
     - helm
     - awscli
     - jenkins
-
+    - handlers
