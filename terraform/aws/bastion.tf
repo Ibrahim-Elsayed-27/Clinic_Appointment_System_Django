@@ -41,6 +41,6 @@ resource "tls_private_key" "bastion" {
 }
 
 resource "aws_key_pair" "bastion" {
-  key_name   = "${local.tags.Project}-bastion-key"
+  key_name   = "bastion-key"
   public_key = tls_private_key.bastion.public_key_openssh
 }
