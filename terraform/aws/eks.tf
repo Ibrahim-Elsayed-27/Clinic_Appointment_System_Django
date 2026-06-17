@@ -4,7 +4,7 @@ module "eks" {
   version = "~> 21.0"
 
   name                                     = "${var.environment}-clinic-cluster"
-  kubernetes_version                       = "1.36"
+  kubernetes_version                       = "1.33"
   enable_cluster_creator_admin_permissions = var.enable_eks_bootstrap_cluster_creator_admin_permissions
 
   endpoint_public_access  = var.enable_eks_endpoint_public_access
@@ -13,15 +13,33 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
+  addons = {
+    vpc-cni = {
+      most_recent    = true
+      before_compute = true
+    }
+    coredns = {
+      most_recent    = true
+      before_compute = true
+    }
+    kube-proxy = {
+      most_recent    = true
+      before_compute = true
+    }
+  }
+
   eks_managed_node_groups = {
     clinic_nodes = {
       instance_types = [var.node_instance_type]
       min_size       = var.node_min_size
       max_size       = var.node_max_size
       desired_size   = var.node_desired_size
+      key_name       = aws_key_pair.bastion.key_name
 
     }
   }
+
+
 
   access_entries = {
     jenkins = {
@@ -40,4 +58,15 @@ module "eks" {
   }
 
   tags = local.tags
+}
+
+
+resource "aws_security_group_rule" "eks_api_from_jenkins" {
+  type                     = "ingress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  description              = "Jenkins to EKS API server"
+  security_group_id        = module.eks.cluster_security_group_id
+  source_security_group_id = aws_security_group.jenkins.id
 }
