@@ -128,17 +128,6 @@ variable "db_allocated_storage" {
   default     = 20
 }
 
-variable "db_name" {
-  description = "Initial database name"
-  type        = string
-  default     = "clinicdb"
-}
-
-variable "db_username" {
-  description = "RDS master username"
-  type        = string
-  default     = "clinicadmin"
-}
 
 variable "db_port" {
   description = "RDS port"
