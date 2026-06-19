@@ -38,11 +38,12 @@ module "db" {
   storage_type      = "gp3"
   storage_encrypted = true
 
-  db_name  = var.db_name
-  username = var.db_username
+  db_name  = local.db_credentials.dbname
+  username = local.db_credentials.username
+  password = local.db_credentials.password
   port     = var.db_port
 
-  manage_master_user_password = true
+  manage_master_user_password = false
 
   publicly_accessible = false
   multi_az            = var.db_multi_az
