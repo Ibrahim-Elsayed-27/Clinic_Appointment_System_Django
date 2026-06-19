@@ -35,3 +35,12 @@ media/
 **/.terraform.lock.hcl
 **/crash.log
 **/*plan.txt
+
+
+
+# Ignore all Plans
+**/*tfplan**
+
+
+# Ignore Setup file
+setup.sh

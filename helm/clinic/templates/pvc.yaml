@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "clinic.fullname" . }}-static
+  labels:
+    {{- include "clinic.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.static.accessMode }}
+  {{- if .Values.persistence.static.storageClassName }}
+  storageClassName: {{ .Values.persistence.static.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.static.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "clinic.fullname" . }}-media
+  labels:
+    {{- include "clinic.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.media.accessMode }}
+  {{- if .Values.persistence.media.storageClassName }}
+  storageClassName: {{ .Values.persistence.media.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.media.size }}

@@ -1,0 +1,20 @@
+{{- if .Values.environment.development }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "clinic.dbName" . }}
+  labels:
+    {{- include "clinic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.database.port }}
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+  selector:
+    {{- include "clinic.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: db
+
+{{- end }}

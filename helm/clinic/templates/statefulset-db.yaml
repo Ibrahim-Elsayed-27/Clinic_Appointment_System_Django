@@ -1,0 +1,66 @@
+{{- if .Values.environment.development }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "clinic.dbName" . }}
+  labels:
+    {{- include "clinic.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db
+spec:
+  serviceName: {{ include "clinic.dbName" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "clinic.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: db
+  template:
+    metadata:
+      labels:
+        {{- include "clinic.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: db
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: {{ .Values.database.port }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.database.name | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.database.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "clinic.fullname" . }}-secret
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.database.user | quote }}
+                - -d
+                - {{ .Values.database.name | quote }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.database.storage.storageClassName }}
+        storageClassName: {{ .Values.database.storage.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.database.storage.size }}
+
+
+{{- end }}

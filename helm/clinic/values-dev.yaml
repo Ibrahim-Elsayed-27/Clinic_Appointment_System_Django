@@ -1,0 +1,25 @@
+environment:
+  development: true
+
+replicaCount: 1
+
+image:
+  repository: clinic-web
+  tag: dev
+  pullPolicy: IfNotPresent
+
+django:
+  secretKey: ""
+  csrfTrustedOrigins:
+    - http://localhost:8090
+
+database:
+  password: dev-password
+  storage:
+    size: 2Gi
+
+ingress:
+  enabled: false
+
+hpa:
+  enabled: false

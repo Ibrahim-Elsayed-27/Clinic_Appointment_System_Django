@@ -1,0 +1,31 @@
+replicaCount: 3
+
+image:
+  repository: clinic-web
+  tag: prod
+  pullPolicy: IfNotPresent
+
+django:
+  secretKey: ""
+  csrfTrustedOrigins:
+    - https://clinic.example.com
+
+database:
+  password: replace-with-production-password
+  storage:
+    size: 20Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: clinic.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+hpa:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
