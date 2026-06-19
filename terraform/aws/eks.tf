@@ -57,9 +57,28 @@ module "eks" {
     }
   }
 
+  encryption_config = {
+    provider_key_arn = aws_kms_key.eks_secrets.arn
+    resources        = ["secrets"]
+  }
+
+
   tags = local.tags
+
+
 }
 
+
+resource "aws_kms_key" "eks_secrets" {
+  description             = "EKS secrets encryption - ${terraform.workspace}"
+  deletion_window_in_days = 7
+  tags                    = local.tags
+}
+
+resource "aws_kms_alias" "eks_secrets" {
+  name          = "alias/eks-secrets-${terraform.workspace}"
+  target_key_id = aws_kms_key.eks_secrets.key_id
+}
 
 resource "aws_security_group_rule" "eks_api_from_jenkins" {
   type                     = "ingress"
@@ -70,3 +89,5 @@ resource "aws_security_group_rule" "eks_api_from_jenkins" {
   security_group_id        = module.eks.cluster_security_group_id
   source_security_group_id = aws_security_group.jenkins.id
 }
+
+
