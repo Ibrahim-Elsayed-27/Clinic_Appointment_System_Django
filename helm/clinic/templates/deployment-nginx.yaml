@@ -25,22 +25,10 @@ spec:
             - name: http
               containerPort: 80
           volumeMounts:
-            - name: nginx-config
-              mountPath: /etc/nginx/conf.d/default.conf
-              subPath: default.conf
-            - name: static
-              mountPath: /app/staticfiles
-              readOnly: true
             - name: media
               mountPath: /app/media
               readOnly: true
       volumes:
-        - name: nginx-config
-          configMap:
-            name: {{ include "clinic.nginxName" . }}-config
-        - name: static
-          persistentVolumeClaim:
-            claimName: {{ include "clinic.fullname" . }}-static
         - name: media
           persistentVolumeClaim:
             claimName: {{ include "clinic.fullname" . }}-media

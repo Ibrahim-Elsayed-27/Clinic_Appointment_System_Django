@@ -30,16 +30,11 @@ spec:
             - secretRef:
                 name: {{ include "clinic.fullname" . }}-secret
           volumeMounts:
-            - name: static
-              mountPath: /app/staticfiles
             - name: media
               mountPath: /app/media
           resources:
             {{- toYaml .Values.web.resources | nindent 12 }}
       volumes:
-        - name: static
-          persistentVolumeClaim:
-            claimName: {{ include "clinic.fullname" . }}-static
         - name: media
           persistentVolumeClaim:
             claimName: {{ include "clinic.fullname" . }}-media

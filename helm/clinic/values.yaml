@@ -47,10 +47,6 @@ django:
     - http://localhost:8090
 
 persistence:
-  static:
-    accessMode: ReadWriteMany
-    size: 1Gi
-    storageClassName: ""
   media:
     accessMode: ReadWriteMany
     size: 2Gi
