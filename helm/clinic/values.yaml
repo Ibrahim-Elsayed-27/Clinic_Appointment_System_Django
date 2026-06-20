@@ -46,11 +46,13 @@ django:
   csrfTrustedOrigins:
     - http://localhost:8090
 
+efs:
+  fileSystemId: ""
+
 persistence:
   media:
     accessMode: ReadWriteMany
     size: 2Gi
-    storageClassName: ""
 
 ingress:
   enabled: false

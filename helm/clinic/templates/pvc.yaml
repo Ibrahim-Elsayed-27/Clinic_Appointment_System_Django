@@ -7,9 +7,7 @@ metadata:
 spec:
   accessModes:
     - {{ .Values.persistence.media.accessMode }}
-  {{- if .Values.persistence.media.storageClassName }}
-  storageClassName: {{ .Values.persistence.media.storageClassName | quote }}
-  {{- end }}
+  storageClassName: efs-sc-{{ .Release.Namespace }}
   resources:
     requests:
       storage: {{ .Values.persistence.media.size }}
