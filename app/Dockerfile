@@ -29,6 +29,15 @@ COPY --from=builder /install /usr/local
 # Copy source code
 COPY . .
 
+# Build-time only — never used at runtime, Kubernetes always overrides
+# these with the real Secret/ConfigMap values via envFrom.
+ENV DJANGO_SECRET_KEY=build-placeholder \
+    DB_NAME=build \
+    DB_USER=build \
+    DB_PASSWORD=build
+
+RUN python manage.py collectstatic --noinput
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
