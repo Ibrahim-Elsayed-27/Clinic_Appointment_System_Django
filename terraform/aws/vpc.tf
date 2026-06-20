@@ -3,7 +3,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 6.0"
 
-  name = var.vpc_name
+  name = "${var.environment}-${var.vpc_name}"
   cidr = var.vpc_cidr_block
 
   azs             = var.availability_zones
@@ -27,7 +27,7 @@ module "vpc" {
 
 
 resource "aws_security_group" "private_api_endpoints" {
-  name        = "${local.tags.Project}-private-api-endpoints-sg"
+  name        = "${local.name_prefix}-private-api-endpoints-sg"
   description = "Allow HTTPS from VPC resources to interface endpoints"
   vpc_id      = module.vpc.vpc_id
 

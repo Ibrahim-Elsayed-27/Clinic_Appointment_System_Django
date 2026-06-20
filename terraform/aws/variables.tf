@@ -144,7 +144,9 @@ variable "db_multi_az" {
 variable "jenkins_secret_arns" {
   description = "Secrets Manager ARNs Jenkins is allowed to read"
   type        = list(string)
-  default     = ["*"]
+  default = [
+    "arn:aws:secretsmanager:*:*:secret:clinic/*"
+  ]
 }
 
 variable "enable_private_api_endpoints" {

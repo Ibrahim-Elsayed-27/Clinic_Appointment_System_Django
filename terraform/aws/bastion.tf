@@ -1,7 +1,7 @@
 # ── Bastion ────────────────────────────────────────────────────
 
 resource "aws_security_group" "bastion" {
-  name        = "${local.tags.Project}-bastion-sg"
+  name        = "${local.name_prefix}-bastion-sg"
   description = "Bastion - SSH from trusted IPs only"
   vpc_id      = module.vpc.vpc_id
 
@@ -31,7 +31,7 @@ resource "aws_instance" "bastion" {
   associate_public_ip_address = true
   key_name                    = aws_key_pair.bastion.key_name
 
-  tags = merge(local.tags, { Name = "${local.tags.Project}-bastion" })
+  tags = merge(local.tags, { Name = "${local.name_prefix}-bastion" })
 }
 
 
@@ -41,6 +41,6 @@ resource "tls_private_key" "bastion" {
 }
 
 resource "aws_key_pair" "bastion" {
-  key_name   = "bastion-key"
+  key_name   = "${var.environment}-bastion-key"
   public_key = tls_private_key.bastion.public_key_openssh
 }

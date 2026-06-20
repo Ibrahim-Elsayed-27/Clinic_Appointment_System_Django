@@ -1,7 +1,7 @@
 # ── Jenkins ────────────────────────────────────────────────────
 
 resource "aws_iam_role" "jenkins" {
-  name = "${local.tags.Project}-jenkins-role"
+  name = "${local.name_prefix}-jenkins-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -23,7 +23,7 @@ resource "aws_iam_role_policy_attachment" "jenkins_ssm" {
 }
 
 resource "aws_iam_role_policy" "jenkins_ci_access" {
-  name = "${local.tags.Project}-jenkins-ci-access-policy"
+  name = "${local.name_prefix}-jenkins-ci-access-policy"
   role = aws_iam_role.jenkins.id
 
   policy = jsonencode({
@@ -63,18 +63,23 @@ resource "aws_iam_role_policy" "jenkins_ci_access" {
           "ecr:UploadLayerPart"
         ]
         Resource = "arn:aws:ecr:${var.aws_region}:*:repository/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["rds:DescribeDBInstances"]
+        Resource = "arn:aws:rds:${var.aws_region}:*:db:${local.rds_identifier}"
       }
     ]
   })
 }
 
 resource "aws_iam_instance_profile" "jenkins" {
-  name = "${local.tags.Project}-jenkins-instance-profile"
+  name = "${local.name_prefix}-jenkins-instance-profile"
   role = aws_iam_role.jenkins.name
 }
 
 resource "aws_security_group" "jenkins" {
-  name        = "${local.tags.Project}-jenkins-sg"
+  name        = "${local.name_prefix}-jenkins-sg"
   description = "Jenkins - SSM Session Manager only"
   vpc_id      = module.vpc.vpc_id
 
@@ -122,7 +127,7 @@ resource "aws_instance" "jenkins" {
     delete_on_termination = false
   }
 
-  tags = merge(local.tags, { Name = "${local.tags.Project}-jenkins" })
+  tags = merge(local.tags, { Name = "${local.name_prefix}-jenkins" })
 }
 
 

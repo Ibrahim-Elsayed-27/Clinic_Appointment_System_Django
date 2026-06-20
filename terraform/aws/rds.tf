@@ -29,7 +29,7 @@ module "db" {
 
   count = var.enable_rds ? 1 : 0
 
-  identifier        = var.db_identifier
+  identifier        = local.rds_identifier
   family            = var.db_family
   engine            = var.db_engine
   engine_version    = var.db_engine_version
