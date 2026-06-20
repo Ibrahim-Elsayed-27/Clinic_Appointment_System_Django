@@ -11,6 +11,7 @@ django:
     - https://clinic.example.com
 
 database:
+  host: "replace-with-production-db-host"
   password: replace-with-production-password
   storage:
     size: 20Gi
