@@ -9,5 +9,5 @@ data:
   DB_PORT: {{ .Values.database.port | quote }}
   DB_NAME: {{ .Values.database.name | quote }}
   CSRF_TRUSTED_ORIGINS: {{ join "," .Values.django.csrfTrustedOrigins | quote }}
-  ALLOWED_HOSTS : {{ join "," .Values.django.ALLOWED_HOSTS | quote }}
+  ALLOWED_HOSTS: {{ join "," .Values.django.ALLOWED_HOSTS | quote }}
 
