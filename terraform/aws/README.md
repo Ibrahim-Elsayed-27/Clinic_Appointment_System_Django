@@ -12,6 +12,8 @@ This folder contains Terraform configurations that provision the AWS infrastruct
   - Application images and related resources: [images.tf](images.tf)
   - AWS Load Balancer Controller IRSA role: [alb.tf](alb.tf)
   - RDS (Postgres) database: [rds.tf](rds.tf)
+  - EFS shared media storage and EFS CSI driver: [efs.tf](efs.tf)
+  - Secrets Manager database credential lookup: [secrets.tf](secrets.tf)
   - Jenkins infrastructure: [jenkins.tf](jenkins.tf)
   - Bastion host: [bastion.tf](bastion.tf)
   - Outputs for access and automation: [outputs.tf](outputs.tf)
@@ -36,14 +38,14 @@ This folder contains Terraform configurations that provision the AWS infrastruct
 
 For the full architecture reference, including diagrams and component-level details, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-1. Networking (VPC, subnets, route tables) provides isolated networking for EKS and RDS.
-2. EKS cluster runs the Django app and other Kubernetes workloads.
-3. ECR stores Docker images built from the `app/` directory.
+1. Networking (VPC, subnets, route tables) provides isolated networking per environment.
+2. EKS cluster runs the Django app and other Kubernetes workloads per environment.
+3. ECR stores Docker images built from the `app/` directory. The repository is intentionally shared and should be created by only one environment state.
 4. ALB exposes services running in EKS to the internet.
-5. RDS hosts the application database (Postgres).
-6. Jenkins (optional) can run CI/CD and is provisioned with its own resources if enabled.
-7. Private subnets use NAT for outbound internet/AWS API access; private VPC endpoints are available in the VPC configuration but disabled by default to reduce cost and operational complexity.
-8. Jenkins receives EKS admin access through an EKS access entry and connects to the private EKS API endpoint from inside the VPC.
+5. EFS provides ReadWriteMany media storage for Kubernetes pods.
+6. RDS hosts the production application database; dev can use the Helm-managed PostgreSQL StatefulSet.
+7. Jenkins runs CI/CD per environment and receives EKS admin access through an EKS access entry.
+8. Private subnets use NAT for outbound internet/AWS API access; private VPC endpoints are available but disabled by default to reduce cost and operational complexity.
 
 ## Prerequisites
 
@@ -53,7 +55,7 @@ For the full architecture reference, including diagrams and component-level deta
 
 ## Typical Workflow
 
-1. Create or choose an environment variable file, such as `local.tfvars`.
+1. Create or choose environment variable files, usually `common.tfvars` plus either `dev.tfvars` or `prod.tfvars`.
    - For available variables, defaults, and examples, see [CONFIGURATION.md](CONFIGURATION.md).
 2. Initialize Terraform (this uses the backend defined in `backend.tf`):
 
@@ -61,43 +63,53 @@ For the full architecture reference, including diagrams and component-level deta
 terraform init -upgrade
 ```
 
-3. Review plan:
+3. Select or create the Terraform workspace for the target environment:
 
 ```bash
-terraform plan -var-file="local.tfvars"
+terraform workspace select dev || terraform workspace new dev
 ```
 
-4. Apply:
+4. Review plan:
 
 ```bash
-terraform apply -var-file="local.tfvars"
+terraform plan -var-file="common.tfvars" -var-file="dev.tfvars"
 ```
 
-5. After EKS is created, use the Terraform outputs for automation and access details:
+5. Apply:
+
+```bash
+terraform apply -var-file="common.tfvars" -var-file="dev.tfvars"
+```
+
+6. After EKS is created, use the Terraform outputs for automation and access details:
 
 ```bash
 terraform output cluster_name
 terraform output eks_endpoint
+terraform output efs_file_system_id
 terraform output jenkins_private_ip
 terraform output bastion_public_ip
 terraform output -raw bastion_private_key
 ```
 
-6. Run the Ansible playbook to configure Jenkins when the Jenkins instance is reachable through the bastion/private network. The playbook installs Java 21, AWS CLI v2, Helm, latest stable `kubectl`, Jenkins plugins, and JCasC Kubernetes cloud configuration.
+7. Run the Ansible playbook to configure Jenkins when the Jenkins instance is reachable through the bastion/private network. The playbook installs Java 21, AWS CLI v2, Helm, latest stable `kubectl`, Jenkins plugins, and JCasC Kubernetes cloud configuration.
 
 ## State and Backends
 
-- Remote state is configured in `backend.tf`. Confirm the S3 bucket, key, and DynamoDB lock table before running `terraform init` for the first time.
+- Remote state is configured in `backend.tf` with `workspace_key_prefix = "envs"`. Use one workspace per environment, such as `dev` and `prod`, so each stack keeps separate state.
+- Resource names are environment-prefixed through `local.name_prefix`, for example `dev-clinic-appointment-jenkins` and `prod-clinic-appointment-jenkins`.
 
 ## Variables and Secrets
 
-- Keep sensitive values out of checked-in files. Use environment variables, Vault, or encrypted secrets for production secrets.
+- Keep sensitive values out of checked-in files. Production RDS credentials are read from AWS Secrets Manager using the `clinic/db-credentials-${environment}` naming pattern.
 - Use [CONFIGURATION.md](CONFIGURATION.md) when creating or updating environment-specific `.tfvars` files.
 
 ## Notes & Tips
 
 - Review `outputs.tf` to see useful values to interact with created resources (EKS cluster endpoint, ALB DNS, RDS endpoint, etc.).
-- The EC2 key pair name is fixed as `bastion-key`; Terraform generates the private key and exposes it as the sensitive `bastion_private_key` output.
+- The EC2 key pair name is environment-scoped as `${environment}-bastion-key`; Terraform generates the private key and exposes it as the sensitive `bastion_private_key` output.
+- The EFS file system ID is exposed as `efs_file_system_id` and should be passed to Helm as `efs.fileSystemId` during CD.
+- The shared ECR repository is named `clinic-appointment`; set `create_ecr = true` in only one environment state to avoid duplicate repository creation.
 - NAT is enabled by default. Private API endpoints require both `enable_private_api_endpoints = true` and the relevant `enable_endpoint_* = true` flags.
 - If you plan to destroy resources, be cautious with `terraform destroy` as it will remove data (RDS) and networking components.
 - For CI/CD, confirm IAM roles/policies used by Jenkins or automation systems have least privilege required.

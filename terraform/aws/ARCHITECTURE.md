@@ -8,7 +8,7 @@
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  VPC (10.0.0.0/16)                                  │  │
+│  │  Per-environment VPC (10.0.0.0/16)                  │  │
 │  │  ┌──────────────────────────────────────────────┐   │  │
 │  │  │ Public Subnets (10.0.1.0/24, 10.0.2.0/24)  │   │  │
 │  │  │ ┌─────────────────────────┐                │   │  │
@@ -27,6 +27,7 @@
 │  │  │ │    ├─ Min: 1, Max: 2, Desired: 2     │   │  │  │
 │  │  │ │    └─ Instance Type: t3.small         │   │  │  │
 │  │  │ ├────────────────────────────────────────┤   │  │  │
+│  │  │ │ Shared Media: EFS                     │   │  │  │
 │  │  │ │ Database                               │   │  │  │
 │  │  │ │ ├─ Dev: PostgreSQL on K8s StatefulSet │   │  │  │
 │  │  │ │ └─ Prod: AWS RDS PostgreSQL 16        │   │  │  │
@@ -40,7 +41,8 @@
 │  │ Additional AWS Services                            │  │
 │  │ ├─ ECR: clinic-appointment repository              │  │
 │  │ ├─ IAM: Service roles and policies                 │  │
-│  │ ├─ Secrets Manager: Database credentials           │  │
+│  │ ├─ Secrets Manager: database credentials       │  │
+│  │ ├─ EFS: shared media file system per environment   │  │
 │  │ ├─ S3: Terraform state bucket                      │  │
 │  │ └─ CloudWatch: Cluster logs and metrics            │  │
 │  └──────────────────────────────────────────────────────┘  │
@@ -53,18 +55,18 @@
 ### VPC Design
 
 ```
-VPC: clinic-vpc (10.0.0.0/16)
+VPC: dev-clinic-vpc or prod-clinic-vpc (10.0.0.0/16)
 ├── Availability Zone: us-east-1a
 │   ├── Public Subnet: 10.0.1.0/24 (clinic-appointment-public-us-east-1a)
 │   │   └── Resources: Bastion, NAT Gateway
 │   └── Private Subnet: 10.0.11.0/24 (clinic-appointment-private-us-east-1a)
-│       └── Resources: Jenkins, EKS Nodes, RDS
+│       └── Resources: Jenkins, EKS Nodes, EFS mount target, RDS when enabled
 │
 └── Availability Zone: us-east-1b
     ├── Public Subnet: 10.0.2.0/24 (clinic-appointment-public-us-east-1b)
     │   └── Resources: NAT Gateway only when multi-NAT is enabled
     └── Private Subnet: 10.0.12.0/24 (clinic-appointment-private-us-east-1b)
-        └── Resources: EKS Nodes, RDS
+        └── Resources: EKS Nodes, EFS mount target, RDS when enabled
 ```
 
 ### Subnet Configuration
@@ -80,7 +82,7 @@ VPC: clinic-vpc (10.0.0.0/16)
 
 - **Route to**: NAT Gateway for outbound internet and AWS API access
 - **Public IP**: No automatic assignment
-- **Hosts**: Jenkins (CI/CD), EKS Worker Nodes, RDS Database
+- **Hosts**: Jenkins (CI/CD), EKS Worker Nodes, EFS mount targets, and RDS when enabled
 - **Connectivity**: Outbound access through NAT; optional VPC endpoints can be enabled for selected AWS services
 - **Kubernetes Tags**: Internal ELB role (for AWS Load Balancer Controller)
 
@@ -114,7 +116,7 @@ AWS Services (S3, ECR, Secrets Manager, etc.)
 
 ## 🔐 Security Group Architecture
 
-### Bastion Security Group (`clinic-appointment-bastion-sg`)
+### Bastion Security Group (`${environment}-clinic-appointment-bastion-sg`)
 
 ```
 Ingress:
@@ -126,7 +128,7 @@ Egress:
 └─ All traffic (0-65535) to 0.0.0.0/0
 ```
 
-### Jenkins Security Group (`clinic-appointment-jenkins-sg`)
+### Jenkins Security Group (`${environment}-clinic-appointment-jenkins-sg`)
 
 ```
 Ingress:
@@ -142,7 +144,7 @@ Egress:
 └─ All traffic (0-65535) to 0.0.0.0/0
 ```
 
-### RDS Security Group (`clinic-appointment-rds-sg`)
+### RDS Security Group (`${environment}-clinic-rds-sg`)
 
 ```
 Ingress:
@@ -154,7 +156,19 @@ Egress:
 └─ All traffic (0-65535) to 0.0.0.0/0
 ```
 
-### Private API Endpoints Security Group (`clinic-appointment-private-api-endpoints-sg`)
+### EFS Security Group (`${environment}-clinic-efs-sg`)
+
+```
+Ingress:
+├─ Port 2049 (NFS)
+│  ├─ Source: EKS Node Security Group
+│  └─ Protocol: TCP
+
+Egress:
+└─ All traffic (0-65535) to 0.0.0.0/0
+```
+
+### Private API Endpoints Security Group (`${environment}-clinic-appointment-private-api-endpoints-sg`)
 
 ```
 Ingress:
@@ -185,7 +199,7 @@ Cluster: dev-clinic-cluster (or prod-clinic-cluster)
 │   ├── Desired Nodes: 2 (dev), configurable
 │   ├── Launch Type: On-Demand
 │   ├── AMI: Amazon Linux 2023
-│   ├── Key Pair: bastion-key
+│   ├── Key Pair: dev-bastion-key or prod-bastion-key
 │   └── Networking: Private subnets, multi-AZ
 │
 ├── Node Security Group
@@ -196,10 +210,11 @@ Cluster: dev-clinic-cluster (or prod-clinic-cluster)
 │   ├── Jenkins Role: Administrator access to cluster
 │   └── Cluster Creator: Bootstrap admin access when enabled
 │
-└── Add-ons (auto-managed)
+└── Add-ons
     ├── vpc-cni: Pod networking
     ├── kube-proxy: Networking proxy
-    └── coredns: Service discovery
+    ├── coredns: Service discovery
+    └── aws-efs-csi-driver: EFS dynamic provisioning for media
 ```
 
 ### Node Group Details
@@ -268,6 +283,7 @@ Private Subnets (us-east-1a, us-east-1b)
 - Automated backups (7-day retention)
 - Encryption at rest (aws/rds KMS key)
 - Secrets Manager credentials rotation
+- Credentials are read from `clinic/db-credentials-${environment}`
 - Multi-AZ high availability (optional)
 - Performance Insights available
 - Enhanced Monitoring available
@@ -281,6 +297,7 @@ Repository Name: clinic-appointment
 ├── Image Scanning: Enabled (push-time scan)
 ├── Tag Mutability: Mutable (can overwrite tags)
 ├── Access: IAM-based
+├── Ownership: created by only one environment state
 └── Integration: Jenkins → EKS pod deployment
 ```
 
@@ -333,11 +350,14 @@ Policies:
 │   ├── DescribeCluster
 │   └── ListClusters
 │
-└── ECR
+├── ECR
     ├── GetAuthorizationToken
     ├── PushImage
     ├── PullImage
     └── DescribeRepositories
+│
+└── RDS
+    └── DescribeDBInstances
 ```
 
 ### Jenkins Access Methods (Private Subnet - Must go through Bastion)
@@ -362,13 +382,13 @@ The Ansible playbook prepares Jenkins after Terraform creates the instance:
 
 ### Service Roles
 
-#### Jenkins Role (`clinic-appointment-jenkins-role`)
+#### Jenkins Role (`${environment}-clinic-appointment-jenkins-role`)
 
 - **Trust Policy**: EC2 service principal
 - **Attached Policies**:
   - AmazonSSMManagedInstanceCore
-  - Custom policy for Secrets Manager, EKS, ECR access
-- **Instance Profile**: clinic-appointment-jenkins-instance-profile
+  - Custom policy for Secrets Manager, EKS, ECR, and RDS describe access
+- **Instance Profile**: `${environment}-clinic-appointment-jenkins-instance-profile`
 
 #### EKS Control Plane Role (AWS Managed)
 
@@ -386,13 +406,25 @@ The Ansible playbook prepares Jenkins after Terraform creates the instance:
 #### ALB Controller IRSA Role (if enabled)
 
 ```
-Role: clinic-appointment-alb-controller-irsa
+Role: ${environment}-alb-controller-irsa
 
 OIDC Provider: EKS cluster
 Service Account: kube-system:aws-load-balancer-controller
 Policy: AWSLoadBalancerControllerIAMPolicy
 
 Purpose: Allow pods to manage ALB/NLB resources
+```
+
+#### EFS CSI IRSA Role
+
+```
+Role: ${environment}-efs-csi-irsa
+
+OIDC Provider: EKS cluster
+Service Account: kube-system:efs-csi-controller-sa
+Policy: EFS CSI driver policy
+
+Purpose: Allow the EFS CSI controller to provision access points for Kubernetes PersistentVolumeClaims
 ```
 
 ## 🔌 VPC Endpoints Architecture
@@ -501,7 +533,8 @@ Pods running in Kubernetes
     ↓
 Connect to Database
     └─ Dev: Kubernetes PostgreSQL StatefulSet
-    └─ Prod: AWS RDS PostgreSQL
+    ├─ Prod: AWS RDS PostgreSQL
+    └─ Media uploads: EFS-backed Kubernetes PVC
 ```
 
 ### API Request Flow
@@ -518,6 +551,7 @@ Kubernetes Service
 Application Pods (EKS Nodes)
     ↓
 Database (RDS or StatefulSet)
+Media Storage (EFS PVC)
 ```
 
 ## 📊 Resource Tagging
@@ -526,10 +560,10 @@ All resources are tagged for organization and cost allocation:
 
 ```
 tags {
-  Project   = "clinic-appointment"
-  ManagedBy = "terraform"
-  CreatedBy = "terraform"
-  Environment = "dev" or "prod" (from Terraform)
+  Project     = "clinic-appointment"
+  Environment = "dev" or "prod"
+  ManagedBy   = "terraform"
+  CreatedBy   = "terraform"
 }
 ```
 
@@ -545,6 +579,7 @@ tags {
 Jenkins ──HTTPS──> Kubernetes API (via IAM and EKS access entry)
 Jenkins ──HTTPS──> ECR (via NAT by default, optional VPC endpoints)
 EKS Nodes ──TCP:5432──> RDS / PostgreSQL StatefulSet
+EKS Nodes ──TCP:2049──> EFS media file system
 EKS Nodes ──HTTPS/PULL──> ECR (Docker images via NAT by default)
 ALB Control Plane ──API──> EKS (manage load balancers)
 Bastion ──SSH──> Jenkins, EKS Nodes (via SSM or direct SSH)
@@ -562,12 +597,11 @@ provider (aws)
 data.aws_ami (al2023)
     ↓
 vpc ──┐
-      ├──> eks ──┐
-      │          ├──> alb_controller_irsa
-      ├──> rds ──┤
-      │          ├──> jenkins
+      ├──> eks ──┬──> alb_controller_irsa
+      │          └──> efs_csi_irsa + efs_csi_driver
+      ├──> efs
+      ├──> rds (when enabled)
       ├──> jenkins
-      │
       └──> bastion
 ```
 

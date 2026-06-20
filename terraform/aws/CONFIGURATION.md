@@ -23,6 +23,8 @@ This document provides a comprehensive reference for all Terraform variables use
 - **Default**: `"dev"`
 - **Description**: Environment for all resources (used in resource naming)
 - **Valid Values**: `"dev"`, `"prod"`, `"staging"`, etc.
+- **State Usage**: Use a matching Terraform workspace for each environment so remote state is separated under the `envs/` backend prefix.
+- **Naming**: Most environment-owned resources are prefixed as `${environment}-clinic-appointment-*`.
 - **Example**:
   ```hcl
   environment = "prod"
@@ -39,7 +41,7 @@ This document provides a comprehensive reference for all Terraform variables use
 - **Type**: `string`
 - **Default**: `"clinic-appointment-vpc"`
 - **Description**: Name of the VPC
-- **Naming**: Should be descriptive and unique per region
+- **Naming**: Terraform prefixes this with `environment`, so `clinic-vpc` becomes `dev-clinic-vpc` or `prod-clinic-vpc`.
 - **Example**:
   ```hcl
   vpc_name = "clinic-vue-east-1"
@@ -272,9 +274,9 @@ This document provides a comprehensive reference for all Terraform variables use
 
 - **Type**: `string`
 - **Default**: `"clinic-db"`
-- **Description**: Unique name for RDS instance in AWS region
+- **Description**: Base name for the RDS instance
 - **Naming**: Must be lowercase, alphanumeric + hyphens
-- **Note**: Used in endpoint URL: `{identifier}.xxxxx.rds.amazonaws.com`
+- **Note**: Terraform prefixes this with `environment`, so the default becomes `prod-clinic-db` when `environment = "prod"`.
 - **Example**:
   ```hcl
   db_identifier = "clinic-db-prod"
@@ -353,32 +355,23 @@ This document provides a comprehensive reference for all Terraform variables use
   db_allocated_storage = 50
   ```
 
-#### `db_name`
+### RDS Credentials
 
-- **Type**: `string`
-- **Default**: `"clinicdb"`
-- **Description**: Name of default database created
-- **Note**: Must be created at instance initialization
-- **Constraints**: Alphanumeric, max 63 characters
-- **Example**:
-  ```hcl
-  db_name = "clinicdb"
-  ```
+RDS database name, username, and password are no longer Terraform variables. When `enable_rds = true`, Terraform reads them from AWS Secrets Manager:
 
-#### `db_username`
+```text
+clinic/db-credentials-${environment}
+```
 
-- **Type**: `string`
-- **Default**: `"clinicadmin"`
-- **Description**: Master username for database
-- **Constraints**:
-  - Must start with letter
-  - Cannot be reserved word (admin, root, etc.)
-  - Length: 1-16 characters
-- **Best Practice**: Use separate app user, not master user
-- **Example**:
-  ```hcl
-  db_username = "clinicadmin"
-  ```
+The secret string must be JSON with these keys:
+
+```json
+{
+  "dbname": "clinicdb",
+  "username": "clinicadmin",
+  "password": "replace-me"
+}
+```
 
 #### `db_port`
 
@@ -417,6 +410,7 @@ This document provides a comprehensive reference for all Terraform variables use
 - **Default**: `false`
 - **Description**: Create Elastic Container Registry repository
 - **Repository Name**: `clinic-appointment`
+- **Shared Repository**: The repository name is intentionally not environment-prefixed. Enable creation in only one environment state, then let both dev and prod push/pull images from the same repository.
 - **Image Scanning**: Enabled automatically
 - **Costs**: ~$0.07 per GB-month for storage
 - **Alternative**: Use Docker Hub, GitHub Container Registry
@@ -432,7 +426,7 @@ This document provides a comprehensive reference for all Terraform variables use
 #### `jenkins_secret_arns`
 
 - **Type**: `list(string)`
-- **Default**: `["*"]`
+- **Default**: `["arn:aws:secretsmanager:*:*:secret:clinic/*"]`
 - **Description**: ARNs of Secrets Manager secrets Jenkins can access
 - **Use Case**: Store credentials (GitHub tokens, Docker credentials, etc.)
 - **Security**:
@@ -535,10 +529,23 @@ This document provides a comprehensive reference for all Terraform variables use
 
 ### Bastion Key Pair
 
-- **Key Pair Name**: `bastion-key`
+- **Key Pair Name**: `${environment}-bastion-key`
 - **Description**: Terraform generates one RSA 4096-bit key pair and uses it for both the bastion host and EKS managed nodes
 - **Jenkins Usage**: Jenkins also uses this key pair because the instance is reachable only through the bastion security group
 - **Retrieval**: Use `terraform output -raw bastion_private_key` and store it securely outside the repository
+
+---
+
+## 📂 Shared Media Storage
+
+The infrastructure creates one encrypted EFS file system per environment for Kubernetes media uploads.
+
+- **File System Name Tag**: `${environment}-clinic-media`
+- **Security Group**: `${environment}-clinic-efs-sg`
+- **Ingress**: TCP 2049 from the EKS node security group
+- **Mount Targets**: one per private subnet
+- **Kubernetes Integration**: EKS add-on `aws-efs-csi-driver` plus an IRSA role for `kube-system:efs-csi-controller-sa`
+- **Helm/CD Usage**: pass `terraform output efs_file_system_id` to the chart as `efs.fileSystemId`
 
 ---
 
@@ -552,7 +559,7 @@ environment = "dev"
 # Database: Use in-cluster PostgreSQL to save costs
 enable_rds = false
 
-# Container Registry
+# Container Registry: one env should own the shared ECR repository
 create_ecr = true
 
 # Cluster Settings
@@ -573,15 +580,13 @@ environment = "prod"
 
 # Database: Use managed RDS for production
 enable_rds           = true
-db_identifier        = "clinic-db-prod"
+db_identifier        = "clinic-db" # becomes prod-clinic-db
 db_instance_class    = "db.t3.micro"
 db_allocated_storage = 20
-db_name              = "clinicdb"
-db_username          = "clinicadmin"
 db_multi_az          = false  # Set to true for active-passive HA
 
-# Container Registry
-create_ecr = true
+# Container Registry: shared repo is created by dev in this setup
+create_ecr = false
 
 # Cluster Settings
 node_instance_type = "t3.small"
@@ -614,7 +619,7 @@ single_nat_gateway      = true
 map_public_ip_on_launch = true
 
 # Jenkins
-jenkins_secret_arns = ["*"]
+jenkins_secret_arns = ["arn:aws:secretsmanager:*:*:secret:clinic/*"]
 
 # Networking
 enable_private_api_endpoints = false
@@ -671,7 +676,7 @@ enable_eks_bootstrap_cluster_creator_admin_permissions = true
 | enable_rds                   | bool | false       | false       | true        |
 | db_instance_class            | str  | db.t3.micro | N/A         | db.t3.micro |
 | db_multi_az                  | bool | false       | N/A         | false       |
-| create_ecr                   | bool | false       | true        | true        |
+| create_ecr                   | bool | false       | true        | false       |
 | enable_private_api_endpoints | bool | false       | false       | false       |
 | enable_alb_controller_irsa   | bool | true        | true        | true        |
 | create_nat_gateway           | bool | true        | true        | true        |
