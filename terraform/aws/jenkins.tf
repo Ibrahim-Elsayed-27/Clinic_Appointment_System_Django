@@ -68,6 +68,11 @@ resource "aws_iam_role_policy" "jenkins_ci_access" {
         Effect   = "Allow"
         Action   = ["rds:DescribeDBInstances"]
         Resource = "arn:aws:rds:${var.aws_region}:*:db:${local.rds_identifier}"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["elasticfilesystem:DescribeFileSystems"]
+        Resource = "*"
       }
     ]
   })
@@ -124,7 +129,7 @@ resource "aws_instance" "jenkins" {
     volume_size           = 30
     volume_type           = "gp3"
     encrypted             = true
-    delete_on_termination = false
+    delete_on_termination = true
   }
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-jenkins" })
