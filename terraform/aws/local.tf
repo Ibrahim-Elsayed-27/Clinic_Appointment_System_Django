@@ -1,9 +1,10 @@
 locals {
-  name_prefix = "$clinic-appointment"
+  name_prefix = "${var.environment}-clinic-appointment"
 
   tags = {
-    Project   = "clinic-appointment"
-    ManagedBy = "terraform"
-    CreatedBy = "terraform"
+    Project     = "clinic-appointment"
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    CreatedBy   = "terraform"
   }
 }

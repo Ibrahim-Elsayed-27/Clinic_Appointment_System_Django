@@ -44,7 +44,7 @@ pipeline {
             }
         }
 
-        stage('Trigger CD') {
+        stage('Trigger dev CD') {
             steps {
                 build job: 'clinic-cd', parameters: [
                     string(name: 'IMAGE_TAG', value: "$BUILD_NUMBER")

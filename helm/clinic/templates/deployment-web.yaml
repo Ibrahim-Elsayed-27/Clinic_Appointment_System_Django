@@ -29,6 +29,17 @@ spec:
                 name: {{ include "clinic.fullname" . }}-config
             - secretRef:
                 name: {{ include "clinic.fullname" . }}-secret
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
           volumeMounts:
             - name: media
               mountPath: /app/media
