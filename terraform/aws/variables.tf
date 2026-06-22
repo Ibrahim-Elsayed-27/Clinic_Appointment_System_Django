@@ -158,7 +158,7 @@ variable "enable_private_api_endpoints" {
 variable "enable_alb_controller_irsa" {
   description = "Create IRSA IAM role for AWS Load Balancer Controller (required for ALB Ingress)"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "create_ecr" {

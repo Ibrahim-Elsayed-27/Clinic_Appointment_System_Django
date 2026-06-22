@@ -1,0 +1,30 @@
+- name: Add ingress-nginx helm repo
+  environment:
+    HOME: /var/lib/jenkins
+  command: helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+  register: helm_repo_add
+  changed_when: "'already exists' not in helm_repo_add.stderr"
+
+- name: Update helm repos
+  environment:
+    HOME: /var/lib/jenkins
+  command: helm repo update
+
+- name: Check if ingress-nginx is installed
+  environment:
+    HOME: /var/lib/jenkins
+    KUBECONFIG: /var/lib/jenkins/.kube/config
+  command: helm status ingress-nginx -n ingress-nginx
+  register: ingress_status
+  failed_when: false
+  changed_when: false
+
+- name: Install ingress-nginx controller
+  environment:
+    HOME: /var/lib/jenkins
+    KUBECONFIG: /var/lib/jenkins/.kube/config
+  command: >
+    helm install ingress-nginx ingress-nginx/ingress-nginx
+    --namespace ingress-nginx --create-namespace
+    --set controller.publishService.enabled=true
+  when: ingress_status.rc != 0
