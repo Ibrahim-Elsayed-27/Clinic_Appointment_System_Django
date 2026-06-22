@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION   = 'us-east-1'
-        ECR_REGISTRY = '123456789012.dkr.ecr.us-east-1.amazonaws.com'
+        ECR_REGISTRY = '254652353999.dkr.ecr.us-east-1.amazonaws.com/clinic-appointment'
         ECR_REPO     = 'clinic'
     }
 
@@ -46,7 +46,7 @@ pipeline {
 
         stage('Trigger dev CD') {
             steps {
-                build job: 'clinic-cd', parameters: [
+                build job: 'clinic-cd-dev', parameters: [
                     string(name: 'IMAGE_TAG', value: "$BUILD_NUMBER")
                 ]
             }
