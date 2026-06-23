@@ -4,7 +4,7 @@ pipeline {
     environment {
         AWS_REGION   = 'us-east-1'
         ECR_REGISTRY = '254652353999.dkr.ecr.us-east-1.amazonaws.com/clinic-appointment'
-        ECR_REPO     = 'clinic'
+        ECR_REPO     = 'clinic-appointment'
     }
 
     stages {
@@ -26,8 +26,8 @@ pipeline {
         stage('Build and push web image') {
             steps {
                 sh '''
-                    docker build -t "$ECR_REGISTRY/$ECR_REPO-web:$BUILD_NUMBER" -f app/Dockerfile app
-                    docker push "$ECR_REGISTRY/$ECR_REPO-web:$BUILD_NUMBER"
+                    docker build -t "$ECR_REGISTRY/$ECR_REPO:web-$BUILD_NUMBER" -f app/Dockerfile app
+                    docker push "$ECR_REGISTRY/$ECR_REPO:web-$BUILD_NUMBER"
                 '''
             }
         }
@@ -36,10 +36,10 @@ pipeline {
             steps {
                 sh '''
                     docker build \
-                      --build-arg WEB_IMAGE="$ECR_REGISTRY/$ECR_REPO-web:$BUILD_NUMBER" \
-                      -t "$ECR_REGISTRY/$ECR_REPO-nginx:$BUILD_NUMBER" \
+                      --build-arg WEB_IMAGE="$ECR_REGISTRY/$ECR_REPO:web-$BUILD_NUMBER" \
+                      -t "$ECR_REGISTRY/$ECR_REPO:nginx-$BUILD_NUMBER" \
                       -f app/nginx/Dockerfile app/nginx
-                    docker push "$ECR_REGISTRY/$ECR_REPO-nginx:$BUILD_NUMBER"
+                    docker push "$ECR_REGISTRY/$ECR_REPO:nginx-$BUILD_NUMBER"
                 '''
             }
         }
