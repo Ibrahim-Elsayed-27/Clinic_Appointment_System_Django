@@ -4,7 +4,7 @@ environment:
   development: false
 
 image:
-  repository: clinic-web
+  repository: clinic-appointment
   tag: latest
   pullPolicy: IfNotPresent
 
