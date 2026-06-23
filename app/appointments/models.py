@@ -2,7 +2,7 @@
 from django.conf import settings
 from django.db import models
 from django.core.exceptions import ValidationError
-from app.scheduling.models import Slot
+from scheduling.models import Slot
 
 
 class Appointment(models.Model):
