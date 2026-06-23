@@ -4,7 +4,7 @@ environment:
 replicaCount: 1
 
 image:
-  repository: clinic-web
+  repository: clinic-appointment
   tag: dev
   pullPolicy: IfNotPresent
 
