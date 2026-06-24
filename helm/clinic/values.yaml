@@ -50,7 +50,7 @@ database:
   port: 5432
   storage:
     size: 5Gi
-    storageClassName: ""
+    storageClassName: "gp3"
 
 django:
   secretKey: ""

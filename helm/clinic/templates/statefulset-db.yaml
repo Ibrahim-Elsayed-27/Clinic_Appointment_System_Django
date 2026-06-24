@@ -3,7 +3,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "clinic.dbName" . }}
-  value: /var/lib/postgresql/data/pgdata
   labels:
     {{- include "clinic.labels" . | nindent 4 }}
     app.kubernetes.io/component: db
@@ -37,6 +36,8 @@ spec:
                 secretKeyRef:
                   name: {{ include "clinic.fullname" . }}-secret
                   key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
           readinessProbe:
             exec:
               command:
