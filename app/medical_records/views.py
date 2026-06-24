@@ -7,8 +7,8 @@ from django.contrib.auth.mixins import (
 from django.urls import reverse_lazy
 from django.utils import timezone
 
-from app.appointments.models import Appointment
-from app.appointments.views import handle_errors
+from appointments.models import Appointment
+from appointments.views import handle_errors
 from .models import ConsultationRecord
 from .forms import ConsultationRecordForm
 

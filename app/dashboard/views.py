@@ -1,9 +1,9 @@
 from django.http import HttpResponseForbidden
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from app.appointments.models import Appointment
-from app.appointments.views import get_today_queue, list_patient_appointments
-from app.dashboard.decorators import role_required
+from appointments.models import Appointment
+from appointments.views import get_today_queue, list_patient_appointments
+from dashboard.decorators import role_required
 
 # Create your views here.
 
