@@ -17,6 +17,10 @@ spec:
         {{- include "clinic.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: nginx
     spec:
+      {{- if .Values.nginx.image.pullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.nginx.image.pullSecrets | indent 8 }}
+      {{- end }}
       containers:
         - name: nginx
           image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
