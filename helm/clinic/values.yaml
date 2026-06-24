@@ -4,14 +4,14 @@ environment:
   development: false
 
 image:
-  repository: clinic-appointment
-  tag: latest
+  repository: 254652353999.dkr.ecr.us-east-1.amazonaws.com/clinic-appointment
+  tag: ""
   pullPolicy: IfNotPresent
 
 nginx:
   image:
-    repository: nginx
-    tag: alpine
+    repository: 254652353999.dkr.ecr.us-east-1.amazonaws.com/clinic-appointment
+    tag: ""
     pullPolicy: IfNotPresent
   replicaCount: 1
   service:

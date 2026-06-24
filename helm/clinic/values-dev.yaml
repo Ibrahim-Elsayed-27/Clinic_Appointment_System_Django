@@ -4,9 +4,13 @@ environment:
 replicaCount: 1
 
 image:
-  repository: clinic-appointment
-  tag: dev
+  repository: 254652353999.dkr.ecr.us-east-1.amazonaws.com/clinic-appointment
+  tag: ""
   pullPolicy: IfNotPresent
+
+  # reference the image pull secret created by Ansible
+  pullSecrets:
+    - name: ecr-registry
 
 django:
   secretKey: ""
@@ -20,6 +24,12 @@ database:
 
 ingress:
   enabled: false
+
+nginx:
+  image:
+    repository: 254652353999.dkr.ecr.us-east-1.amazonaws.com/clinic-appointment
+    tag: ""
+    pullPolicy: IfNotPresent
 
 hpa:
   enabled: false

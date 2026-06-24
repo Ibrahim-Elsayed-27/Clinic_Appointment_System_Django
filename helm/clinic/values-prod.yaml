@@ -1,8 +1,8 @@
 replicaCount: 3
 
 image:
-  repository: clinic-appointment
-  tag: prod
+  repository: 254652353999.dkr.ecr.us-east-1.amazonaws.com/clinic-appointment
+  tag: ""
   pullPolicy: IfNotPresent
 
 django:
