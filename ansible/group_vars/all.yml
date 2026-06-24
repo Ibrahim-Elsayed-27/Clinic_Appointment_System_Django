@@ -1,4 +1,5 @@
 aws_region: "us-east-1"
 eks_cluster_name: "{{ lookup('env', 'EKS_CLUSTER_NAME') }}"
 eks_endpoint: "{{ lookup('env', 'EKS_ENDPOINT') }}"
+eks_ca_data: "{{ lookup('env', 'EKS_CA_DATA') }}"
 jenkins_private_ip: "{{ lookup('env', 'JENKINS_IP') }}"

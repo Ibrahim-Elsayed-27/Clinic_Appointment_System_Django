@@ -4,7 +4,9 @@ jenkins:
         name: "eks-cloud"
         serverUrl: "{{ eks_endpoint }}"
         namespace: "jenkins"
-        credentialsId: ""        # empty = uses node IAM role
+        credentialsId: "eks-cloud-kubeconfig"
+        serverCertificate: |
+{{ (eks_ca_data | b64decode) | indent(10, true) }}
         jenkinsUrl: "http://{{ jenkins_private_ip }}:8080"
         connectTimeout: 5
         readTimeout: 15
