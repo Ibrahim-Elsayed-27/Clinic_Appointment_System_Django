@@ -6,9 +6,10 @@
     - git
     - java
     - docker
-    - awscli
     - kubectl
     - helm
     - nginx_controller
+    - awscli
     - jenkins
     - handlers
+    - image_pull
