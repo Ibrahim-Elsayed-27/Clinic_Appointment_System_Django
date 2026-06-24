@@ -44,3 +44,8 @@ media/
 
 # Ignore Setup file
 setup.sh
+ssh.sh
+
+
+# Ignore .prettierignore file
+.prettierignore
