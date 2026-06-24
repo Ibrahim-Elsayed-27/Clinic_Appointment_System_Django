@@ -12,4 +12,3 @@
     - awscli
     - jenkins
     - handlers
-    - image_pull

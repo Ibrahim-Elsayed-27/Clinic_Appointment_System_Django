@@ -17,10 +17,6 @@ spec:
         {{- include "clinic.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: web
     spec:
-      {{- if .Values.image.pullSecrets }}
-      imagePullSecrets:
-{{ toYaml .Values.image.pullSecrets | indent 8 }}
-      {{- end }}
       containers:
         - name: web
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
