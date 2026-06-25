@@ -8,10 +8,6 @@ image:
   tag: ""
   pullPolicy: IfNotPresent
 
-  # reference the image pull secret created by Ansible
-  pullSecrets:
-    - name: ecr-registry
-
 django:
   secretKey: ""
   csrfTrustedOrigins:
