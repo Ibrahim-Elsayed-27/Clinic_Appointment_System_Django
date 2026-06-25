@@ -53,9 +53,9 @@ module "db" {
   create_db_subnet_group = true
   subnet_ids             = module.vpc.private_subnets
 
-  backup_retention_period = 7
-  deletion_protection     = true
-  skip_final_snapshot     = false
+
+  deletion_protection = true
+  skip_final_snapshot = false
 
   auto_minor_version_upgrade = true
 
