@@ -70,10 +70,10 @@ django:
 efs:
   fileSystemId: "${EFS_ID}"
 image:
-  tag: web-"${IMAGE_TAG}"
+  tag: "web-${IMAGE_TAG}"
 nginx:
   image:
-    tag: nginx-"${IMAGE_TAG}"
+    tag: "nginx-${IMAGE_TAG}"
 EOF
 
                     helm upgrade --install clinic ./helm/clinic \
