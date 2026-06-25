@@ -12,7 +12,7 @@ django:
 
 database:
   host: "replace-with-production-db-host"
-  password: replace-with-production-password
+  password: "replace-with-production-password"
   storage:
     size: 20Gi
 
