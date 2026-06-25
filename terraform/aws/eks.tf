@@ -91,3 +91,12 @@ resource "aws_security_group_rule" "eks_api_from_jenkins" {
 }
 
 
+resource "aws_security_group_rule" "nodes_allow_http_internal" {
+  type                     = "ingress"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = module.eks.node_security_group_id
+  source_security_group_id = module.eks.node_security_group_id
+  description              = "Allow ingress-nginx controller to reach app pods"
+}
