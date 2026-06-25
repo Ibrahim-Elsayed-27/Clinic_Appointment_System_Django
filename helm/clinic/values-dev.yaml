@@ -15,7 +15,7 @@ image:
 django:
   secretKey: ""
   csrfTrustedOrigins:
-    - http://localhost
+    - http://localhost:8090
 
 database:
   password: dev-password

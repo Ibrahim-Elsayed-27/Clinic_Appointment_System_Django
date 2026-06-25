@@ -57,7 +57,7 @@ django:
   ALLOWED_HOSTS:
     - "*"
   csrfTrustedOrigins:
-    - http://localhost
+    - http://localhost:8090
 
 efs:
   fileSystemId: ""

@@ -35,3 +35,9 @@
     owner: jenkins
     group: jenkins
     mode: "0600"
+
+- name: Set KUBECONFIG environment variable permanently for all users
+  copy:
+    dest: /etc/profile.d/k8s.sh
+    content: "export KUBECONFIG=/var/lib/jenkins/.kube/config\n"
+    mode: "0644"

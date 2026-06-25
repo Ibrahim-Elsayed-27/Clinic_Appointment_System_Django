@@ -41,6 +41,7 @@ media/
 # Ignore Setup file
 setup.sh
 ssh.sh
+port-forward.sh
 
 
 # Ignore .prettierignore file
