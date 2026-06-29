@@ -22,6 +22,8 @@ pipeline {
             steps {
                 sh '''
                     set -euo pipefail
+                    set +x
+                    export AWS_PAGER=""
                     export KUBECONFIG=/var/lib/jenkins/.kube/config
 
                     GRAFANA_PASSWORD=$(aws secretsmanager get-secret-value \
@@ -57,6 +59,8 @@ EOF
             steps {
                 sh '''
                     set -euo pipefail
+                    set +x
+                    export AWS_PAGER=""
                     export KUBECONFIG=/var/lib/jenkins/.kube/config
 
                     DB_SECRET_JSON=$(aws secretsmanager get-secret-value \
