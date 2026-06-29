@@ -105,8 +105,8 @@ resource "aws_security_group" "jenkins" {
   }
 
   ingress {
-    from_port       = 8000
-    to_port         = 8000
+    from_port       = 8090
+    to_port         = 8090
     protocol        = "tcp"
     security_groups = [aws_security_group.bastion.id]
     description     = "clinic app port-forward from bastion"
