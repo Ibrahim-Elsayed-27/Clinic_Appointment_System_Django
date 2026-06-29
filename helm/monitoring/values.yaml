@@ -3,9 +3,7 @@ prometheus:
     serviceMonitorSelectorNilUsesHelmValues: false
     serviceMonitorNamespaceSelector:
       any: true
-    serviceMonitorSelector:
-      matchLabels:
-        release: kube-prometheus-stack
+    serviceMonitorSelector: {}
     retention: 15d
     resources:
       requests:
