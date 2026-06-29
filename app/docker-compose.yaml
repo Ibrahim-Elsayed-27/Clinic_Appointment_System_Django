@@ -4,9 +4,9 @@ services:
     container_name: clinic_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: clinic
     volumes:
       - postgres-vol:/var/lib/postgresql/data
     ports:
@@ -18,7 +18,7 @@ services:
 
   web:
     build: .
-    container_name: clinic_web
+    container_name: clinic-web
     restart: unless-stopped
     env_file: .env
     volumes:
