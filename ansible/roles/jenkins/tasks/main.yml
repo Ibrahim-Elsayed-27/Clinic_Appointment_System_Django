@@ -56,66 +56,9 @@
     group: jenkins
     mode: "0755"
 
-- name: Configure Kubernetes cloud in Jenkins via JCasC
-  template:
-    src: kubernetes-cloud.yaml.j2
-    dest: /var/lib/jenkins/casc_configs/kubernetes.yaml
-    owner: jenkins
-    group: jenkins
-    mode: "0644"
-  notify: daemon-reload and restart jenkins
-
 - name: Set JCasC config path in Jenkins service
   lineinfile:
     path: /usr/lib/systemd/system/jenkins.service
     regexp: '^Environment="JAVA_OPTS='
     line: 'Environment="JAVA_OPTS=-Djava.awt.headless=true -Dcasc.jenkins.config=/var/lib/jenkins/casc_configs"'
-  notify: daemon-reload and restart jenkins
-
-- name: Create Jenkins namespace in EKS
-  become: yes
-  become_user: jenkins
-  shell: kubectl create namespace jenkins --dry-run=client -o yaml | kubectl apply -f -
-  environment:
-    KUBECONFIG: /var/lib/jenkins/.kube/config
-
-- name: Create Jenkins service account and ClusterRoleBinding in EKS
-  become: yes
-  become_user: jenkins
-  shell: |
-    kubectl apply -f - <<EOF
-    apiVersion: v1
-    kind: ServiceAccount
-    metadata:
-      name: jenkins-agent
-      namespace: jenkins
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRoleBinding
-    metadata:
-      name: jenkins-agent-admin
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: ClusterRole
-      name: cluster-admin
-    subjects:
-    - kind: ServiceAccount
-      name: jenkins-agent
-      namespace: jenkins
-    EOF
-  environment:
-    KUBECONFIG: /var/lib/jenkins/.kube/config
-
-- name: Read the existing kubeconfig (created by the kubectl role) as base64
-  slurp:
-    src: /var/lib/jenkins/.kube/config
-  register: eks_cloud_kubeconfig_b64
-
-- name: Write kubeconfig as a JCasC Secret file credential for eks-cloud
-  template:
-    src: jenkins.yaml.j2
-    dest: /var/lib/jenkins/casc_configs/credentials.yaml
-    owner: jenkins
-    group: jenkins
-    mode: "0644"
   notify: daemon-reload and restart jenkins

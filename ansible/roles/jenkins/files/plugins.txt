@@ -1,5 +1,4 @@
 configuration-as-code
-kubernetes
 aws-credentials
 aws-secrets-manager-credentials-provider
 git
