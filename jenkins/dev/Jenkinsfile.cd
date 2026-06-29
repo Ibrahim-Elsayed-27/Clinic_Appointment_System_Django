@@ -34,9 +34,14 @@ pipeline {
                       --query "FileSystems[?Tags[?Key=='Name' && Value=='dev-clinic-media']].FileSystemId" \
                       --output text)
 
+                    GRAFANA_PASSWORD=$(aws secretsmanager get-secret-value \
+                      --secret-id "clinic/grafana-password-dev" \
+                      --query SecretString --output text | jq -r .password)
+
                     umask 077
                     VALUES_FILE=$(mktemp /tmp/clinic-secrets-XXXXXX.yaml)
-                    trap 'rm -f "$VALUES_FILE"' EXIT
+                    MONITORING_FILE=$(mktemp /tmp/monitoring-secrets-XXXXXX.yaml)
+                    trap 'rm -f "$VALUES_FILE" "$MONITORING_FILE"' EXIT
 
                     cat > "$VALUES_FILE" <<EOF
 database:
@@ -54,6 +59,11 @@ nginx:
     tag: "nginx-${IMAGE_TAG}"
 EOF
 
+                    cat > "$MONITORING_FILE" <<EOF
+grafana:
+  adminPassword: "${GRAFANA_PASSWORD}"
+EOF
+
                     helm upgrade --install clinic ./helm/clinic \
                       -f ./helm/clinic/values.yaml \
                       -f ./helm/clinic/values-dev.yaml \
@@ -61,7 +71,18 @@ EOF
                       --namespace dev \
                       --create-namespace
 
-                    unset DB_USER DB_PASSWORD DB_NAME DJANGO_SECRET_KEY DB_SECRET_JSON
+                    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+                    helm repo update
+
+                    helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+                      -f ./helm/monitoring/values.yaml \
+                      -f ./helm/monitoring/values-dev.yaml \
+                      -f "$MONITORING_FILE" \
+                      --namespace monitoring \
+                      --create-namespace \
+                      --timeout 5m
+
+                    unset DB_USER DB_PASSWORD DB_NAME DJANGO_SECRET_KEY DB_SECRET_JSON GRAFANA_PASSWORD
                 '''
             }
         }
