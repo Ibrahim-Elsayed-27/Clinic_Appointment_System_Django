@@ -1,0 +1,6 @@
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 15d
+  grafana:
+    adminPassword: "prod-changeme"
