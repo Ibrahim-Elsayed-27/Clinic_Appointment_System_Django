@@ -1,6 +1,6 @@
 # Ansible Configuration
 
-This Ansible folder configures the EC2 host that runs Jenkins for the clinic appointment infrastructure. The playbook installs the required CI/CD tools, connects the host to the EKS cluster, installs Jenkins, and configures Jenkins to launch Kubernetes build agents inside EKS.
+This Ansible folder configures the EC2 host that runs Jenkins for the clinic appointment infrastructure. The playbook installs the required CI/CD tools, connects the host to the EKS cluster, installs Jenkins, and prepares the Jenkins host for Kubernetes-based automation.
 
 ## Directory Layout
 
@@ -15,11 +15,13 @@ ansible/
 └── roles/
     ├── awscli/
     ├── docker/
+    ├── git/
     ├── handlers/
     ├── helm/
     ├── java/
     ├── jenkins/
-    └── kubectl/
+    ├── kubectl/
+    └── nginx_controller/
 ```
 
 ## Ansible Configuration
@@ -27,6 +29,7 @@ ansible/
 `ansible.cfg` sets the default Ansible behavior for this project:
 
 - `inventory = inventory/hosts.yml` makes the project inventory file the default inventory.
+- `remote_tmp = /home/jenkins/.ansible/tmp` ensures Ansible uses a writable temp folder for remote operations when running as the Jenkins user.
 - `host_key_checking = False` disables SSH host key prompts, which is useful for newly created cloud hosts.
 - `retry_files_enabled = False` prevents `.retry` files from being created after failed runs.
 - `roles_path = roles` tells Ansible to load roles from the local `roles/` directory.
@@ -56,7 +59,8 @@ ansible-playbook playbook.yml -e "bastion_public_ip=<BASTION_PUBLIC_IP>"
 
 - `aws_region`: AWS region used by EKS and AWS CLI commands. Default is `us-east-1`.
 - `eks_cluster_name`: loaded from the `EKS_CLUSTER_NAME` environment variable.
-- `eks_endpoint`: loaded from the `EKS_ENDPOINT` environment variable and used by Jenkins Kubernetes cloud configuration.
+- `eks_endpoint`: loaded from the `EKS_ENDPOINT` environment variable and used by Jenkins Kubernetes-related configuration.
+- `eks_ca_data`: loaded from the `EKS_CA_DATA` environment variable.
 - `jenkins_private_ip`: loaded from the `JENKINS_IP` environment variable and used by the inventory and Jenkins URL.
 
 Before running the playbook, export the required values:
@@ -64,6 +68,7 @@ Before running the playbook, export the required values:
 ```bash
 export EKS_CLUSTER_NAME=<EKS_CLUSTER_NAME>
 export EKS_ENDPOINT=<EKS_API_SERVER_ENDPOINT>
+export EKS_CA_DATA=<EKS_CA_DATA>
 export JENKINS_IP=<JENKINS_PRIVATE_IP>
 ```
 
@@ -76,10 +81,12 @@ export JENKINS_IP=<JENKINS_PRIVATE_IP>
   hosts: all
   become: true
   roles:
+    - git
     - java
     - docker
     - kubectl
     - helm
+    - nginx_controller
     - awscli
     - jenkins
     - handlers
@@ -87,13 +94,15 @@ export JENKINS_IP=<JENKINS_PRIVATE_IP>
 
 The role order matters:
 
-1. `java` installs Java 21, which Jenkins requires.
-2. `docker` installs and starts Docker, then adds the `jenkins` user to the Docker group.
-3. `kubectl` installs the latest stable kubectl and prepares Jenkins kubeconfig access.
-4. `helm` installs Helm 3.
-5. `awscli` installs AWS CLI v2.
-6. `jenkins` installs Jenkins, plugins, JCasC configuration, and EKS service account resources.
-7. `handlers` provides the handler used to reload systemd and restart Jenkins after service configuration changes.
+1. `git` installs Git.
+2. `java` installs Java 21, which Jenkins requires.
+3. `docker` installs and starts Docker, then adds the `jenkins` user to the Docker group.
+4. `kubectl` installs the latest stable kubectl and prepares Jenkins kubeconfig access.
+5. `helm` installs Helm 3.
+6. `nginx_controller` configures the ingress-nginx Helm repository for Kubernetes ingress support.
+7. `awscli` installs AWS CLI v2 and `jq`.
+8. `jenkins` installs Jenkins, plugins, and JCasC-related configuration.
+9. `handlers` provides the handler used to reload systemd and restart Jenkins after service configuration changes.
 
 ## Roles
 
@@ -123,9 +132,17 @@ Note: this role calls `aws eks update-kubeconfig`, so the target host must have 
 
 Downloads the official Helm 3 install script to `/tmp/get-helm.sh` and runs it if `/usr/local/bin/helm` does not already exist.
 
+### git
+
+Installs Git using `dnf` so the Jenkins host can clone repositories and support pipeline tasks.
+
+### nginx_controller
+
+Adds the ingress-nginx Helm repository for Kubernetes ingress support and prepares the cluster for NGINX-based ingress resources.
+
 ### awscli
 
-Installs `unzip`, downloads AWS CLI v2, extracts it under `/tmp`, and runs the installer. The install task is skipped if `/usr/local/bin/aws` already exists.
+Installs `unzip`, downloads AWS CLI v2, extracts it under `/tmp`, and runs the installer. It also installs `jq` for JSON parsing in AWS CLI helper tasks. The install task is skipped if `/usr/local/bin/aws` already exists.
 
 ### jenkins
 
@@ -139,15 +156,11 @@ Installs and configures Jenkins:
 - Reads and prints the initial admin password.
 - Installs plugins from `roles/jenkins/files/plugins.txt`.
 - Creates `/var/lib/jenkins/casc_configs`.
-- Renders Jenkins Configuration as Code from `templates/kubernetes-cloud.yaml.j2`.
 - Updates the Jenkins systemd service to load JCasC from `/var/lib/jenkins/casc_configs`.
-- Creates a `jenkins` namespace in EKS.
-- Creates a `jenkins-agent` service account and binds it to the `cluster-admin` ClusterRole.
 
 Installed plugins:
 
 - `configuration-as-code`
-- `kubernetes`
 - `aws-credentials`
 - `aws-secrets-manager-credentials-provider`
 - `git`
@@ -160,21 +173,11 @@ Installed plugins:
 
 Provides the `daemon-reload and restart jenkins` handler. The Jenkins role notifies this handler after changing `/usr/lib/systemd/system/jenkins.service`.
 
-## Jenkins Kubernetes Cloud
+## Jenkins Configuration as Code
 
-`roles/jenkins/templates/kubernetes-cloud.yaml.j2` configures Jenkins Configuration as Code with one Kubernetes cloud:
+The Jenkins role prepares `/var/lib/jenkins/casc_configs` and configures Jenkins to load JCasC configuration from that directory.
 
-- Cloud name: `eks-cloud`
-- Kubernetes API URL: `{{ eks_endpoint }}`
-- Namespace: `jenkins`
-- Jenkins URL: `http://{{ jenkins_private_ip }}:8080`
-- Agent service account: `jenkins-agent`
-- Agent image: `jenkins/inbound-agent:latest`
-- CPU request/limit: `500m` / `1`
-- Memory request/limit: `512Mi` / `1Gi`
-- Container cap: `10`
-
-The template leaves `credentialsId` empty, so Jenkins relies on the node IAM role and kubeconfig instead of a Jenkins-stored Kubernetes credential.
+This setup is currently focused on the Jenkins service and plugin configuration, and any additional JCasC content should be added into the configured directory.
 
 ## Running The Playbook
 
@@ -183,6 +186,7 @@ From the `ansible/` directory:
 ```bash
 export EKS_CLUSTER_NAME=<EKS_CLUSTER_NAME>
 export EKS_ENDPOINT=<EKS_API_SERVER_ENDPOINT>
+export EKS_CA_DATA=<EKS_CA_DATA>
 export JENKINS_IP=<JENKINS_PRIVATE_IP>
 
 ansible-playbook playbook.yml -e "bastion_public_ip=<BASTION_PUBLIC_IP>"
@@ -194,8 +198,8 @@ The SSH key path is currently hardcoded as `~/.ssh/bastion-key.pem` in the inven
 
 After a successful run:
 
-- The Jenkins host has Java, Docker, kubectl, Helm, AWS CLI, and Jenkins installed.
+- The Jenkins host has Java, Docker, kubectl, Helm, AWS CLI, `jq`, and Jenkins installed.
 - Jenkins is running on port `8080`.
-- Jenkins plugins required for pipelines, Docker, AWS credentials, and Kubernetes agents are installed.
-- Jenkins has JCasC configuration for launching agents in the EKS `jenkins` namespace.
-- The EKS cluster has a `jenkins` namespace and `jenkins-agent` service account.
+- Jenkins plugins required for pipelines, Docker, and AWS credentials are installed.
+- Jenkins is configured to load JCasC configuration from `/var/lib/jenkins/casc_configs`.
+- The Jenkins user has an EKS kubeconfig prepared under `/var/lib/jenkins/.kube`.
