@@ -1,5 +1,8 @@
 # Clinic Appointment Platform
 
+<img width="1679" height="988" alt="main-clinic" src="https://github.com/user-attachments/assets/a857db32-ed77-4223-b117-efcb3f5a096e" />
+
+
 This project is a cloud-native clinic appointment system built to support appointment scheduling, medical record handling, user accounts, analytics, and deployment automation on AWS and Kubernetes.
 
 The platform combines a Django web application with containerized services, infrastructure-as-code, CI/CD pipelines, and observability tooling so it can be deployed and maintained in a modern DevOps workflow.
