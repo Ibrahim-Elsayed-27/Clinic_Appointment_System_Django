@@ -1,6 +1,6 @@
 # Clinic Appointment Platform
 
-<img width="1679" height="988" alt="main-clinic" src="https://github.com/user-attachments/assets/a857db32-ed77-4223-b117-efcb3f5a096e" />
+<img width="1603" height="982" alt="clinic-main" src="https://github.com/user-attachments/assets/3beadd53-d11e-43bc-8e38-cb6f65d3cb4c" />
 
 
 This project is a cloud-native clinic appointment system built to support appointment scheduling, medical record handling, user accounts, analytics, and deployment automation on AWS and Kubernetes.
