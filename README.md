@@ -53,15 +53,18 @@ The following sections are reserved for images that you can add later:
 
 ### Application UI
 
-![Application UI](#)
+<img width="1882" height="1036" alt="clinic" src="https://github.com/user-attachments/assets/4cf4347b-a32b-4edd-95de-fd0cc04d091b" />
+
 
 ### Prometheus UI
 
-![Prometheus UI](#)
+<img width="1610" height="959" alt="prom" src="https://github.com/user-attachments/assets/61056e92-349e-4af5-a562-338c40b85ff1" />
+
 
 ### Grafana Dashboard
 
-![Grafana Dashboard](#)
+<img width="1628" height="994" alt="grafana" src="https://github.com/user-attachments/assets/08ec10f6-0358-4f3c-aaf8-bf8b8af42653" />
+
 
 ## Goals
 
