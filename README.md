@@ -32,6 +32,9 @@ In practice, the workflow looks like this:
 5. Terraform provisions and manages the AWS infrastructure required by the platform.
 6. Prometheus and Grafana provide monitoring and dashboards for the running services.
 
+<img width="1240" height="1381" alt="diagram-export-6-30-2026-4_40_49-PM" src="https://github.com/user-attachments/assets/7e3fdb3b-0c83-4c3b-a862-685ca9e2dccc" />
+
+
 ## Project structure
 
 - `app/` — Django application source, Dockerfiles, and container entrypoints
